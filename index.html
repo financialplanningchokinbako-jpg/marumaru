@@ -1,0 +1,2730 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ふくおか まるまるマップ</title>
+<style>
+  :root{
+    --big:#dbeafe; --big-line:#3b82f6;
+    --l2:#fde68a;  --l2-line:#d97706;
+    --l3:#bbf7d0;  --l3-line:#16a34a;
+    --link:#7c3aed;
+    --act:#fff7ed; --act-line:#ea580c; --act-ink:#7c2d12;
+    --ink:#1f2937;
+    --font:"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN","Hiragino Sans","Yu Gothic",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:var(--font);
+    color:var(--ink); background:#f8fafc; overflow:hidden;
+    -webkit-user-select:none; user-select:none; touch-action:none;
+    display:flex; flex-direction:column;
+  }
+  header{
+    display:flex; align-items:center; gap:8px; padding:10px 14px; flex:none;
+    background:#fff; border-bottom:2px solid #e2e8f0; flex-wrap:wrap;
+  }
+  header h1{font-size:19px; margin:0; letter-spacing:.05em; white-space:nowrap;}
+  /* ステップ（おすと その ステップの どうぐが ひだりに でる） */
+  .steps{display:flex; align-items:center; gap:2px; margin-left:6px;}
+  .step{
+    font-size:14px; padding:7px 12px; border-radius:999px; white-space:nowrap;
+    background:#fff; color:#64748b; font-weight:800; border:2px solid #cbd5e1;
+  }
+  .step.done{border-color:#16a34a; color:#15803d;}
+  .step.done:after{content:" ✓";}
+  .step.on{background:#2563eb; border-color:#2563eb; color:#fff; box-shadow:0 0 0 3px rgba(37,99,235,.22);}
+  .step.on:after{content:"";}
+  .step.lock{opacity:.4; cursor:default;}
+  .step.lock:hover{background:#fff;}
+  .step-line{width:12px; height:4px; border-radius:2px; background:#e2e8f0; flex:none;}
+  .spacer{flex:1;}
+  .menu-wrap{position:relative;}
+  .menu-panel{
+    position:absolute; right:0; top:calc(100% + 8px); z-index:300; min-width:250px;
+    background:#fff; border:2px solid #cbd5e1; border-radius:14px; padding:8px;
+    box-shadow:0 10px 30px rgba(0,0,0,.18); display:flex; flex-direction:column; gap:6px;
+  }
+  .menu-panel[hidden]{display:none;}
+  .menu-panel button{text-align:left; width:100%; font-size:15px; padding:10px 12px;}
+  .menu-panel .danger{color:#dc2626; border-color:#fca5a5;}
+  .menu-sep{height:2px; background:#e2e8f0; margin:2px 0;}
+  .menu-note{font-size:12px; font-weight:800; color:#15803d; padding:2px 6px 4px;}
+  button{
+    font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap;
+    border:2px solid #cbd5e1; background:#fff; color:#334155;
+    border-radius:10px; padding:8px 12px;
+  }
+  button:hover{background:#f1f5f9;}
+  button.primary{background:#2563eb; border-color:#2563eb; color:#fff;}
+  button.primary:hover{background:#1d4ed8;}
+  button.link-on{background:var(--link); border-color:var(--link); color:#fff;}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+
+  main{display:flex; flex:1; min-height:0;}
+
+  /* ---- ガイドの おび（いまの ステップの せつめい） ---- */
+  .guide-bar{
+    display:flex; align-items:center; gap:10px; padding:8px 16px; flex:none;
+    border-bottom:2px solid; font-weight:800;
+  }
+  .guide-bar .gb-icon{font-size:22px; flex:none;}
+  .guide-bar .gb-text{font-size:16px; line-height:1.5; flex:1;}
+  .guide-bar button{font-size:15px; padding:8px 14px; flex:none;}
+  .guide-bar .gb-next{background:#fff; border-width:3px;}
+
+  /* ---- くみあわせを むすぶ かくにんバー（画面下に うく） ---- */
+  .combine-bar{
+    position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:400;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
+    max-width:92vw; background:#fff; border:3px solid var(--link); border-radius:16px;
+    padding:10px 16px; box-shadow:0 8px 24px rgba(0,0,0,.25);
+  }
+  .combine-bar[hidden]{display:none;}
+  .combine-bar .cb-names{
+    font-size:15px; font-weight:700; color:#4c1d95; max-width:320px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .combine-bar button{font-size:17px; padding:12px 16px; white-space:nowrap;}
+
+  /* ---- ステージ ---- */
+  #stageWrap{flex:1; min-width:0; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;}
+  #nameTag{position:absolute; top:10px; left:12px; font-size:13px; font-weight:800; color:#475569; z-index:10; cursor:pointer;}
+  #nameTag:hover{text-decoration:underline;}
+  #board{position:relative; flex:none; transform-origin:center center;}
+  #slogan{
+    height:78px; display:flex; align-items:center; justify-content:center; gap:6px;
+    font-size:27px; font-weight:900; color:#0f172a; cursor:pointer;
+  }
+  #slogan .blank{
+    color:#be123c; border-bottom:4px solid #fb7185; padding:0 10px; min-width:120px;
+    text-align:center; display:inline-block;
+  }
+  #slogan .blank.empty:after{content:"　　　　"; }
+  #stage{position:relative;}
+
+  .city{position:absolute; background:var(--big); border:6px solid var(--big-line); border-radius:24px;}
+  .city-label{
+    position:absolute; left:0; right:0; top:10px; height:40px; line-height:40px; text-align:center;
+    font-size:30px; font-weight:900; color:#1e40af; letter-spacing:.08em; pointer-events:none;
+  }
+  .side-panel{position:absolute; border-radius:18px; border:3px solid;}
+  .side-panel.lp{background:#f5f3ff; border-color:#c4b5fd;}
+  .side-panel.ap{background:#fff7ed; border-color:#fdba74; border-style:dashed;}
+  .side-panel.np{background:#f0fdfa; border-color:#5eead4; border-style:dashed;}
+
+  /* おく ところの めやす（タップすると おける。印刷・画像には でない） */
+  .ph{
+    position:absolute; border:3px dashed; border-radius:18px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; text-align:center; font-weight:800;
+    background:rgba(255,255,255,.35);
+  }
+  .ph2{border-color:rgba(217,119,6,.45); color:rgba(180,83,9,.7); font-size:24px;}
+  .ph3{border-color:rgba(22,163,74,.45); color:rgba(21,128,61,.75); font-size:19px; border-radius:12px;}
+  .ph.ph-on:hover{background:rgba(255,255,255,.75); border-style:solid;}
+  .ph2.ph-on:hover{border-color:var(--l2-line); color:#b45309;}
+  .ph3.ph-on:hover{border-color:var(--l3-line); color:#15803d;}
+  .ph.ph-off{cursor:default;}
+  body.linking .ph{pointer-events:none;}
+  .pic.gpic{cursor:pointer;}
+  /* ばしょごとの しゃしんを ふやす ボタん（印刷・画像には でない） */
+  .addphoto{
+    position:absolute; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-weight:900; color:var(--l2-line);
+  }
+  .addphoto.big{
+    border:3px dashed rgba(217,119,6,.45); border-radius:12px; background:rgba(255,255,255,.35); font-size:20px;
+  }
+  .addphoto.big:hover{background:rgba(255,255,255,.75); border-style:solid; border-color:var(--l2-line);}
+  .addphoto.sm{
+    border-radius:50%; background:#fff; border:3px solid var(--l2-line);
+    box-shadow:0 2px 6px rgba(0,0,0,.2); font-size:30px;
+  }
+  .addphoto.sm:hover{background:#fff7ed;}
+
+  /* ばしょを えらぶ ダイアログ */
+  .pick-grid{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px;}
+  .pick-grid button{
+    background:var(--l2); border:3px solid var(--l2-line); color:var(--ink);
+    border-radius:12px; font-size:15px; padding:10px 14px;
+  }
+  .pick-grid button:hover{background:#fcd34d;}
+  .pick-grid button.add{background:#fff; border-style:dashed; border-color:#94a3b8; color:#64748b;}
+
+  .grp{position:absolute; left:0; top:0;}
+  .box{position:absolute; cursor:grab;}
+  .b2{background:var(--l2); border:5px solid var(--l2-line); border-radius:18px;}
+  .b3{background:var(--l3); border:4px solid var(--l3-line); border-radius:12px;}
+  .b4{background:var(--act); border:3px solid var(--act-line); border-radius:12px; box-shadow:0 3px 8px rgba(0,0,0,.1);}
+  .blk{position:absolute; background:#fff; border:3px solid var(--link); border-radius:12px; cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,.1);}
+  .divider{position:absolute; height:0; border-top:2px dashed rgba(217,119,6,.55); pointer-events:none;}
+
+  /* しゃしんは わくの そとに おく */
+  .pic{
+    position:absolute; background:#fff; border:4px solid; border-radius:10px; overflow:hidden;
+    cursor:grab; box-shadow:0 3px 8px rgba(0,0,0,.18);
+  }
+  .pic img{width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; -webkit-user-drag:none;}
+
+  .tx{position:absolute; white-space:pre; pointer-events:none; font-family:var(--font);}
+
+  #links{position:absolute; left:0; top:0; pointer-events:none;}
+  .hub{
+    position:absolute; width:32px; height:32px; margin:-16px 0 0 -16px; border-radius:50%;
+    background:var(--link); color:#fff; border:3px solid #fff; font-size:15px; font-weight:900;
+    display:flex; align-items:center; justify-content:center; pointer-events:none;
+    box-shadow:0 2px 6px rgba(0,0,0,.25);
+  }
+  .hub.sm{width:24px; height:24px; margin:-12px 0 0 -12px; font-size:12px; border-width:2px;}
+  .hub.cb{width:26px; height:26px; margin:-13px 0 0 -13px; font-size:13px; border:none; box-shadow:none;}
+  .xbtn{
+    position:absolute; width:40px; height:40px; margin:-20px 0 0 -20px; border-radius:50%;
+    background:#fff; border:3px solid var(--link); color:var(--link);
+    font-size:24px; font-weight:900; line-height:34px; text-align:center; cursor:pointer;
+    box-shadow:0 2px 6px rgba(0,0,0,.2);
+  }
+  #dropHi{
+    position:absolute; border-radius:16px; pointer-events:none; z-index:50;
+    box-shadow:0 0 0 6px rgba(37,99,235,.55); background:rgba(37,99,235,.12);
+  }
+  body.linking .b3{cursor:pointer; box-shadow:0 0 0 4px rgba(124,58,237,.3);}
+  .b3.sel{box-shadow:0 0 0 8px rgba(124,58,237,.7) !important;}
+
+  .help-widget{position:fixed; left:12px; bottom:12px; z-index:200;}
+  .help-fab{
+    width:56px; height:56px; border-radius:50%; font-size:26px; flex:none;
+    display:flex; align-items:center; justify-content:center; padding:0;
+    background:#2563eb; border:3px solid #1d4ed8; color:#fff;
+    box-shadow:0 4px 14px rgba(0,0,0,.28); cursor:pointer;
+  }
+  .help-fab:hover{background:#1d4ed8;}
+  .toast{
+    position:fixed; left:50%; bottom:110px; transform:translateX(-50%);
+    background:#1e293b; color:#fff; padding:12px 22px; border-radius:12px;
+    font-size:14px; font-weight:800; box-shadow:0 4px 14px rgba(0,0,0,.3);
+    z-index:500; max-width:80vw; text-align:center; line-height:1.5;
+  }
+
+  #ghost{
+    position:fixed; z-index:999; pointer-events:none; border-radius:12px;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-weight:800; font-size:14px; padding:8px; opacity:.9;
+    transform:translate(-50%,-50%);
+  }
+
+  /* ---- ダイアログ ---- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(15,23,42,.5);
+    display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px;
+  }
+  .modal{
+    background:#fff; border-radius:18px; padding:24px; width:min(540px,100%);
+    box-shadow:0 20px 50px rgba(0,0,0,.3); max-height:90vh; overflow-y:auto;
+  }
+  .modal h2{margin:0 0 6px; font-size:22px;}
+  .modal .sub{font-size:13px; color:#64748b; margin-bottom:10px; line-height:1.6;}
+  .modal label{display:block; font-size:14px; font-weight:800; margin:14px 0 6px;}
+  .modal input[type=text], .modal input[type=number], .modal textarea{
+    width:100%; font-family:inherit; font-size:16px; padding:10px;
+    border:2px solid #cbd5e1; border-radius:10px; -webkit-user-select:text; user-select:text;
+  }
+  .modal textarea{min-height:88px; resize:vertical;}
+  .modal input:focus, .modal textarea:focus{outline:none; border-color:#2563eb;}
+  .counter{font-size:13px; color:#94a3b8; text-align:right; margin-top:4px; font-weight:700;}
+  .counter.near{color:#ea580c;}
+  .counter.full{color:#dc2626;}
+  .modal-head{display:flex; align-items:flex-start; gap:8px;}
+  .modal-head h2{flex:1;}
+  .speak{font-size:18px; padding:4px 10px; flex:none;}
+  ruby rt{font-size:.55em; font-weight:700;}
+  .faq{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+  .faq button{font-size:14px; padding:8px 12px; background:#eff6ff; border-color:#93c5fd; color:#1e3a8a;}
+  .big-mic{width:100%; font-size:20px; padding:16px; margin:12px 0 10px; border-radius:14px;}
+  .big-mic.listening{background:#dc2626; border-color:#dc2626; animation:pulse 1s infinite;}
+  .pointer-ring{
+    position:fixed; z-index:2000; pointer-events:none; border-radius:16px;
+    border:6px solid #f59e0b; box-shadow:0 0 0 9999px rgba(15,23,42,.35); animation:pulse 1s infinite;
+  }
+  .pointer-tag{
+    position:fixed; z-index:2001; pointer-events:none; background:#f59e0b; color:#fff;
+    font-size:20px; font-weight:900; padding:8px 14px; border-radius:12px; white-space:nowrap;
+  }
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.55;}}
+  .check-list{margin:12px 0 0; padding:0; list-style:none;}
+  .check-list li{font-size:16px; font-weight:800; padding:6px 4px;}
+  .check-list li.ok{color:#15803d;}
+  .check-list li.ng{color:#c2410c;}
+  .btnrow{display:flex; gap:10px; justify-content:flex-end; margin-top:20px;}
+  .hint{background:#fef3c7; border-radius:10px; padding:10px 12px; font-size:13px; margin-top:12px; line-height:1.6;}
+  .num{width:90px;}
+  .slogan-line{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    font-size:24px; font-weight:900; margin:18px 0 6px; flex-wrap:wrap;
+  }
+  .slogan-line input{width:220px !important; font-size:22px !important; text-align:center; font-weight:900;}
+
+  @page{size:A4 landscape; margin:8mm;}
+  @media print{
+    header,#guideBar,.combine-bar,.help-widget,.ph,.addphoto,#dropHi,.xbtn,.tx-hint{display:none !important;}
+    html,body{height:auto; overflow:visible; background:#fff;}
+    body{display:block;}
+    main{display:block;}
+    #stageWrap{display:block; overflow:visible;}
+    #nameTag{position:static; margin:0 0 4px;}
+    #board{transform:none !important; zoom:.655;}
+    .pic,.b4,.blk,.hub{box-shadow:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ふくおか まるまるマップ</h1>
+  <div class="steps">
+    <button class="step" id="step0" data-tab="0">🚩 スローガン</button>
+    <div class="step-line"></div>
+    <button class="step" id="step1" data-tab="1">📍 ばしょ</button>
+    <div class="step-line"></div>
+    <button class="step" id="step2" data-tab="2">💬 ことば</button>
+    <div class="step-line"></div>
+    <button class="step" id="step3" data-tab="3">🔗 くみあわせ</button>
+    <div class="step-line"></div>
+    <button class="step" id="step4" data-tab="4">🌱 とりくみ</button>
+  </div>
+  <div class="spacer"></div>
+  <button id="btnUndo" disabled title="1つ まえに もどす">↩ もとに もどす</button>
+  <div class="menu-wrap">
+    <button id="btnMenu">☰ メニュー</button>
+    <div class="menu-panel" id="menuPanel" hidden>
+      <div class="menu-note">✅ かいた ことは じどうで ほぞん されます</div>
+      <button id="btnSubmit" class="primary">📤 せんせいに ていしゅつする</button>
+      <div class="menu-sep"></div>
+      <button id="btnPng">🖼 <ruby>画像<rt>がぞう</rt></ruby>で ほぞん</button>
+      <button id="btnPrint">🖨 <ruby>印刷<rt>いんさつ</rt></ruby></button>
+      <button id="btnTidy">🧹 すきまを つめて ならべる</button>
+      <div class="menu-sep"></div>
+      <button id="btnSaveFile">💾 いまの きろくを とっておく</button>
+      <button id="btnLoadFile">📂 とっておいた きろくを ひらく</button>
+      <div class="menu-sep"></div>
+      <button id="btnReset" class="danger">🗑 はじめから やりなおす</button>
+      <button id="btnSettings">⚙ <ruby>設定<rt>せってい</rt></ruby>（せんせい<ruby>用<rt>よう</rt></ruby>）</button>
+    </div>
+  </div>
+</header>
+
+<div id="guideBar" class="guide-bar"></div>
+
+<main>
+  <div id="stageWrap">
+    <div id="nameTag"></div>
+    <div id="board">
+      <div id="slogan"></div>
+      <div id="stage"></div>
+    </div>
+  </div>
+</main>
+
+<div class="help-widget">
+  <button id="btnHelp" class="help-fab" title="つかいかたの ヘルプ">🤖</button>
+</div>
+
+<div id="combineBar" class="combine-bar" hidden></div>
+
+<script>
+"use strict";
+
+/* ===================== 設定と状態 ===================== */
+// ステージは 横長の 長方形。ぜんたいを「福岡市」の わくに して、画面を ひろく つかう。
+var STAGE_W = 1600, STAGE_H = 900;   // スローガンの 下の ステージの 大きさ
+var SLOGAN_H = 78;
+var SIDE_W = 350, SIDE_GAP = 16;     // みぎがわ：くみあわせ・とりくみ の らん（福岡市の わくの そと）
+var CITY_BW = 6, CITY_LABEL_H = 58, CITY_PAD = 16;
+var L2_BW = 5, L2_PAD = 12;          // ばしょの わく
+var L3_BW = 4, L3_PAD = 9;           // ことばの カード
+var GAP2 = 18, GAP3 = 12;
+var PIC_GAP = 10, PIC_BW = 4;        // しゃしんは わくの そと（すきま PIC_GAP）に おく
+var PLACE_W_RATIO = 0.56;            // ばしょ（ひだり）と しゃしん（みぎ）の はば の わりあい
+var PHOTO_GAP = 8, MAX_PHOTOS_PER_PLACE = 4;   // 1つの ばしょに つけられる しゃしんの まいすう
+var FONT = '"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN","Hiragino Sans","Yu Gothic",sans-serif';
+
+var config = {
+  center: "福岡市",
+  slogan: "",
+  sloganPre: "100年後も",
+  sloganPost: "まち",
+  maxL2: 4,
+  maxL3: 2,
+  landmarks: ["櫛田神社","筥崎宮","博多駅","福岡タワー","大濠公園","福岡城あと",
+              "福岡PayPayドーム","福岡市博物館","天神","中洲","志賀島","能古島"],
+};
+
+/* ===== せんせいへ：くばる まえに ここを せっていしてください =====
+   HELP_API_URL … GAS（marumaru-help-gas.gs）を ウェブアプリとして デプロイした URL（…/exec）
+   APIキーと 先生用パスワードは GAS の「スクリプト プロパティ」にだけ 置き、この ファイルには 書きません。 */
+var HELP_API_URL = "https://script.google.com/macros/s/AKfycbyOpX3Q-wJCR0TTBLB_I2enQrdXU_NUaHu8w3Jv-hhJCkX-JTO-YqZbsJDFjrccfsdO0g/exec";
+// HELP_API_URL が まだ 空の ときだけ つかう、予備の パスワード（"marumaru:" + パスワード の SHA-256。パスワードそのものは 書かない）
+var LOCAL_PASSWORD_HASH = "db3f3a80676aa1f1be24dc5e887cd8d11623e3de3931696a4c36071cb366d34b";
+
+/* 端末に せっていを おぼえさせる（この Chromebook だけ。せんせいが 1回 せっていすれば つぎからも つかえる）
+   ※ スローガンなど「その子の さぎょう内容」は ここには ふくめない */
+var TEACHER_CONFIG_KEYS = ["center","sloganPre","sloganPost","maxL2","maxL3","landmarks"];
+function saveConfigToStorage(){
+  try {
+    var out = {};
+    TEACHER_CONFIG_KEYS.forEach(function(k){ out[k] = config[k]; });
+    localStorage.setItem("marumaru_config", JSON.stringify(out));
+  } catch(e){}
+}
+function loadConfigFromStorage(){
+  try {
+    var raw = localStorage.getItem("marumaru_config");
+    if(!raw) return;
+    var saved = JSON.parse(raw);
+    TEACHER_CONFIG_KEYS.forEach(function(k){
+      if(saved[k] !== undefined) config[k] = saved[k];
+    });
+    if(saved.geminiApiKey !== undefined) saveConfigToStorage();   // まえの バージョンで 端末に のこした APIキーを けす
+  } catch(e){}
+}
+loadConfigFromStorage();
+
+var items = [];   // [{id,name,reason,slot,photos:[...],children:[{id,name,reason,slot}]}]
+var links = [];   // [{id, members:[ことばの id...], text}]
+var acts  = [];   // [{id, text, photo}]  スローガンを実現するための取り組み（ならび順 = 配列の順）
+var note  = "";   // 私の 気づき・つぶやき（図の さいごに かく、自由きじゅつ）
+var uid = 0;
+var studentName = "";       // くみ・ばんごう
+var studentRealName = "";   // なまえ
+var drag = null;
+var linkMode = false, linkSel = [];
+var M = null, S = null;   // いまの サイズ計算 と 図の なかみ
+
+var stage = document.getElementById("stage");
+var wrap  = document.getElementById("stageWrap");
+var board = document.getElementById("board");
+
+/* ===================== 画面に あわせる ===================== */
+function fit(){
+  var s = Math.min(wrap.clientWidth/(STAGE_W+24), wrap.clientHeight/(STAGE_H+SLOGAN_H+16));
+  board.style.transform = "scale("+s+")";
+}
+window.addEventListener("resize", fit);
+
+/* ===================== 進行ぐあい ===================== */
+function sloganDone(){ return config.slogan.trim().length > 0; }
+function l2Ready(){ return items.some(function(it){ return it.reason && it.reason.trim().length>0; }); }
+function allChildren(){
+  var out = [];
+  items.forEach(function(it){ it.children.forEach(function(c){ out.push({parent:it, ch:c}); }); });
+  return out;
+}
+function linkReady(){ return allChildren().length >= 2; }
+
+/* ===================== 文字の おりかえし ===================== */
+var mctx = document.createElement("canvas").getContext("2d");
+function setFont(ctx, size, weight){ ctx.font = weight+" "+size+"px "+FONT; }
+function wrapText(ctx, text, maxW){
+  var out = [];
+  String(text||"").split("\n").forEach(function(para){
+    var cur = "";
+    Array.from(para).forEach(function(chr){
+      var t = cur + chr;
+      if(ctx.measureText(t).width > maxW && cur){ out.push(cur); cur = chr; }
+      else cur = t;
+    });
+    out.push(cur);
+  });
+  while(out.length > 1 && out[out.length-1] === "") out.pop();
+  return out;
+}
+// maxLines を こえたら さいごの 行を「…」で おわらせる
+function fitLines(text, size, weight, maxW, maxLines){
+  if(maxLines < 1 || !text) return [];
+  maxW -= 2;
+  setFont(mctx, size, weight);
+  var lines = wrapText(mctx, text, maxW);
+  if(lines.length > maxLines){
+    lines = lines.slice(0, maxLines);
+    var chars = Array.from(lines[maxLines-1]);
+    while(chars.length && mctx.measureText(chars.join("")+"…").width > maxW) chars.pop();
+    lines[maxLines-1] = chars.join("")+"…";
+  }
+  return lines;
+}
+// ぜんぶ かくと なん行に なるか（fitLines と おなじ はばで かぞえる）
+function lineCount(text, size, weight, maxW){
+  if(!text) return 0;
+  setFont(mctx, size, weight);
+  return wrapText(mctx, text, maxW-2).length;
+}
+function T(t, x, y, size, lh, weight, color, align){
+  return {t:t, x:x, y:y, size:size, lh:lh, w:weight, c:color, a:align||"left"};
+}
+function textBlock(out, lines, x, y, size, lh, weight, color){
+  lines.forEach(function(t, i){ out.push(T(t, x, y+i*lh, size, lh, weight, color)); });
+  return y + lines.length*lh;
+}
+// つかいかたの ヒント（画面だけ。印刷・画像には ださない）
+var HINT_SIZE = 18, HINT_LH = 25, HINT_SPACE = 2*25+12;   // ヒントは 2行まで
+function addHint(out, lines, x, y, color){
+  var tmp = [];
+  textBlock(tmp, lines, x, y, HINT_SIZE, HINT_LH, 800, color);
+  tmp.forEach(function(t){ t.hint = true; out.push(t); });
+}
+
+/* ===================== サイズ計算（わくの ならびかた） ===================== */
+function clampN(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+// n こを いちばん ひろく ならべられる 列の かずを えらぶ（aspect = このましい 横:たて）
+function bestGrid(n, aw, ah, gap, aspect){
+  var best = null;
+  for(var cols=1; cols<=n; cols++){
+    var rows = Math.ceil(n/cols);
+    var cw = (aw-(cols-1)*gap)/cols, ch = (ah-(rows-1)*gap)/rows;
+    var score = Math.min(cw/aspect, ch);
+    if(!best || score > best.score+0.5) best = {cols:cols, rows:rows, cw:cw, ch:ch, score:score};
+  }
+  return best;
+}
+// マス目の いち（さいごの 行は 横に のばして すきまを つくらない）
+function gridCells(n, cols, x, y, w, h, gap){
+  var rows = Math.ceil(n/cols), ch = (h-(rows-1)*gap)/rows, cells = [];
+  for(var r=0; r<rows; r++){
+    var k = Math.min(cols, n - r*cols);
+    var cw = (w-(k-1)*gap)/k;
+    for(var c=0; c<k; c++) cells.push({x:x+c*(cw+gap), y:y+r*(ch+gap), w:cw, h:ch});
+  }
+  return cells;
+}
+// 1つの ばしょに つけた 1〜MAX_PHOTOS_PER_PLACE まいの しゃしんを、みぎの わくの なかに
+// バランスよく ならべる（まいすうに あわせて おおきさが かわる。「＋」は しゃしんの じゃまを しない）
+var ADD_PHOTO_BTN = 56;
+function buildPhotoPane(it, pcell){
+  var photos = it.photos || [];
+  var n = photos.length, showAdd = n < MAX_PHOTOS_PER_PLACE;
+  var innerX = pcell.x+PHOTO_GAP, innerY = pcell.y+PHOTO_GAP;
+  var innerW = pcell.w-2*PHOTO_GAP, innerH = pcell.h-2*PHOTO_GAP;
+  var tiles = [];
+  if(n > 0){
+    var g = bestGrid(n, innerW, innerH, PHOTO_GAP, 1.2);
+    var cells = gridCells(n, g.cols, innerX, innerY, innerW, innerH, PHOTO_GAP);
+    photos.forEach(function(src, idx){ tiles.push({kind:"photo", item:it, index:idx, src:src, box:cells[idx]}); });
+  }
+  if(showAdd){
+    if(n === 0){
+      tiles.push({kind:"add", item:it, big:true, box:{x:innerX, y:innerY, w:innerW, h:innerH}});
+    }else{
+      var s = ADD_PHOTO_BTN;
+      tiles.push({kind:"add", item:it, big:false,
+        box:{x:pcell.x+pcell.w-s-6, y:pcell.y+pcell.h-s-6, w:s, h:s}});
+    }
+  }
+  return {rect:pcell, tiles:tiles, empty:n===0};
+}
+function computeMetrics(cfg){
+  var m = {};
+  m.maxL2 = clampN(parseInt(cfg.maxL2,10)||4, 1, 6);
+  m.maxL3 = clampN(parseInt(cfg.maxL3,10)||2, 1, 5);
+  m.city = {x:0, y:0, w:STAGE_W-SIDE_W-SIDE_GAP, h:STAGE_H};
+  m.side = {x:m.city.w+SIDE_GAP, y:0, w:SIDE_W, h:STAGE_H};
+
+  // ばしょ（ひだり）と、その ばしょの しゃしん（みぎ）を、ペアで たてに ならべる
+  var ax = CITY_BW+CITY_PAD, ay = CITY_BW+CITY_LABEL_H;
+  var aw = m.city.w-2*ax, ah = m.city.h-ay-CITY_BW-CITY_PAD;
+  var placeW = Math.round((aw-GAP2)*PLACE_W_RATIO), photoW = aw-GAP2-placeW;
+  var rowH = (ah-(m.maxL2-1)*GAP2)/m.maxL2;
+  m.slots2 = []; m.photoSlots = [];
+  for(var i=0;i<m.maxL2;i++){
+    var ry = ay+i*(rowH+GAP2);
+    m.slots2.push({x:ax, y:ry, w:placeW, h:rowH});
+    m.photoSlots.push({x:ax+placeW+GAP2, y:ry, w:photoW, h:rowH});
+  }
+  m.head2 = clampN(Math.round(rowH*0.4), 104, 180);
+  m.n2 = clampN(Math.round(Math.min(placeW, rowH*1.5)*0.078), 17, 34);
+  m.r2 = clampN(Math.round(m.n2*0.62), 14, 21);
+
+  var aw3 = placeW-2*(L2_BW+L2_PAD), ah3 = rowH-m.head2-L2_BW-L2_PAD;
+  var g3 = bestGrid(m.maxL3, aw3, ah3, GAP3, 1.2);
+  m.cols3 = g3.cols;
+  m.n3 = clampN(Math.round(Math.min(g3.cw, g3.ch*1.6)*0.12), 14, 24);
+  m.r3 = clampN(Math.round(m.n3*0.8), 12, 19);
+  return m;
+}
+
+/* ===================== 図の なかみを つくる（画面・画像で きょうつう） ===================== */
+function findChildIn(list, id){
+  var out = null;
+  list.forEach(function(it){ it.children.forEach(function(c){ if(c.id===id) out = c; }); });
+  return out;
+}
+function edgePoint(b, tx, ty){   // わくの まんなか → (tx,ty) の 線が わくの ふちと まじわる 点
+  var cx = b.x+b.w/2, cy = b.y+b.h/2, dx = tx-cx, dy = ty-cy;
+  var kx = dx ? (b.w/2)/Math.abs(dx) : Infinity, ky = dy ? (b.h/2)/Math.abs(dy) : Infinity;
+  var k = Math.min(kx, ky);
+  if(k >= 1) return {x:cx, y:cy};
+  return {x:cx+dx*k, y:cy+dy*k};
+}
+function buildScene(m, st){
+  var sc = {M:m, ph2:[], l2:[], links:[], badges:[], photoPanes:[]};
+
+  // ばしょ（2階層）と ことば（3階層）
+  var bySlot = {};
+  st.items.forEach(function(it){ bySlot[it.slot] = it; });
+  m.slots2.forEach(function(cell, i){
+    var it = bySlot[i];
+    if(!it){ sc.ph2.push(Object.assign({slot:i}, cell)); return; }
+    var b = cell;
+    var node = {item:it, cell:cell, box:b, texts:[], kids:[], ph3:[]};
+    var tx = b.x+L2_BW+L2_PAD, tw = b.w-2*(L2_BW+L2_PAD);
+    var nlh = Math.round(m.n2*1.25), rlh = Math.round(m.r2*1.4);
+    var ty = b.y+L2_BW+L2_PAD-2;
+    ty = textBlock(node.texts, fitLines(it.name, m.n2, 900, tw, 2), tx, ty, m.n2, nlh, 900, "#1f2937");
+    ty += 4;
+    var avail = b.y+m.head2-8-ty;
+    textBlock(node.texts, fitLines(it.reason, m.r2, 700, tw, Math.max(1, Math.floor(avail/rlh))),
+              tx, ty, m.r2, rlh, 700, "#374151");
+    node.divider = {x:tx, y:b.y+m.head2-6, w:tw};
+
+    node.cells3 = gridCells(m.maxL3, m.cols3, tx, b.y+m.head2, tw, b.h-m.head2-L2_BW-L2_PAD, GAP3);
+    var kidBySlot = {};
+    it.children.forEach(function(ch){ kidBySlot[ch.slot] = ch; });
+    node.cells3.forEach(function(c3, j){
+      var ch = kidBySlot[j];
+      if(!ch){ node.ph3.push(Object.assign({slot:j}, c3)); return; }
+      var b3 = c3;
+      var k = {ch:ch, cell:c3, box:b3, texts:[]};
+      var x3 = b3.x+L3_BW+L3_PAD, w3 = b3.w-2*(L3_BW+L3_PAD);
+      var nlh3 = Math.round(m.n3*1.25), rlh3 = Math.round(m.r3*1.38);
+      var y3 = b3.y+L3_BW+L3_PAD-2;
+      y3 = textBlock(k.texts, fitLines(ch.name, m.n3, 900, w3, 2), x3, y3, m.n3, nlh3, 900, "#1f2937");
+      y3 += 3;
+      var avail3 = b3.y+b3.h-L3_BW-L3_PAD+2-y3;
+      textBlock(k.texts, fitLines(ch.reason, m.r3, 700, w3, Math.floor(avail3/rlh3)),
+                x3, y3, m.r3, rlh3, 700, "#374151");
+      node.kids.push(k);
+    });
+    sc.l2.push(node);
+    sc.photoPanes.push(buildPhotoPane(it, m.photoSlots[i]));
+  });
+
+  // くみあわせの 線（ことばの わくの ふち → まんなかの 番号）
+  var boxOf = {}, badgeCount = {};
+  sc.l2.forEach(function(n){ n.kids.forEach(function(k){ boxOf[k.ch.id] = k.box; }); });
+  st.links.forEach(function(lk, i){
+    var bs = lk.members.map(function(id){ return boxOf[id]; });
+    if(!bs.length || bs.some(function(b){ return !b; })) return;
+    var hx = 0, hy = 0;
+    bs.forEach(function(b){ hx += b.x+b.w/2; hy += b.y+b.h/2; });
+    hx /= bs.length; hy /= bs.length;
+    sc.links.push({num:i+1, hub:{x:hx, y:hy}, segs:bs.map(function(b){ return edgePoint(b, hx, hy); })});
+    lk.members.forEach(function(id){
+      var b = boxOf[id], c = badgeCount[id] || 0;
+      sc.badges.push({x:b.x+b.w-16-c*25, y:b.y, num:i+1});
+      badgeCount[id] = c+1;
+    });
+  });
+
+  // みぎの らん：入りきらないときは 文の 行数を へらして つめる
+  var side = null;
+  for(var maxL=10; maxL>=1; maxL--){
+    side = layoutSide(m, st, maxL);
+    if(side.fits) break;
+  }
+  sc.side = side;
+  sc.sideOverflow = !side.fits;
+  sc.sideCut = side.cut;   // 「…」で きれて ぜんぶ 見えない 文の かず
+  return sc;
+}
+function layoutSide(m, st, maxL){
+  var P = 12, sx = m.side.x, sw = m.side.w, cw = sw-2*P;
+  var R = {texts:[], linkCards:[], actCards:[], cut:0};
+  var y = 12;
+
+  R.texts.push(T("🔗 くみあわせ", sx+P+2, y, 23, 30, 900, "#6d28d9"));
+  y += 36;
+  if(!st.links.length){
+    if(st.hints && st.hints.links) addHint(R.texts, ["ここを タップして、ことばの", "カードを えらんで むすぼう"], sx+P+2, y, "#8b5cf6");
+    y += HINT_SPACE;
+  }
+  st.links.forEach(function(lk, i){
+    var bx = sx+P, by = y, cp = 10, bd = 26;
+    var names = lk.members.map(function(id){ var c = findChildIn(st.items, id); return c ? c.name : "？"; }).join(" ✕ ");
+    var nl = fitLines(names, 15, 800, cw-2*cp-bd-8-24, 2);   // みぎうえの「×」の ぶん あける
+    var tl = fitLines(lk.text, 18, 800, cw-2*cp-6, maxL);
+    if(lineCount(lk.text, 18, 800, cw-2*cp-6) > tl.length) R.cut++;
+    var nh = Math.max(bd, nl.length*20);
+    var h = cp+nh+6+tl.length*25+cp;
+    var card = {lk:lk, num:i+1, box:{x:bx, y:by, w:cw, h:h}, texts:[],
+                badge:{x:bx+cp+bd/2, y:by+cp+bd/2}, del:{x:bx+cw-3, y:by+3}};
+    textBlock(card.texts, nl, bx+cp+bd+8, by+cp+(nh-nl.length*20)/2, 15, 20, 800, "#6d28d9");
+    textBlock(card.texts, tl, bx+cp+3, by+cp+nh+6, 18, 25, 800, "#4c1d95");
+    R.linkCards.push(card);
+    y += h+10;
+  });
+  R.lp = {x:sx, y:0, w:sw, h:Math.max(y+2, 110)};
+
+  // 「とりくみ」と「わたしの きづき・つぶやき」で、のこりの たての はんぶんずつを つかう
+  var ay = R.lp.h+14, MID_GAP = 14;
+  var apH = Math.max(90, Math.floor((STAGE_H-ay-MID_GAP)/2));
+  var npY = ay+apH+MID_GAP;
+
+  y = ay+12;
+  R.texts.push(T("🌱 とりくみ", sx+P+2, y, 23, 30, 900, "#c2410c"));
+  y += 30;
+  R.texts.push(T("スローガンを かなえる ために できること", sx+P+2, y, 15, 20, 700, "#9a3412"));
+  y += 26;
+  if(!st.acts.length){
+    if(st.hints && st.hints.acts) addHint(R.texts, ["ここを タップして、", "とりくみを かこう"], sx+P+2, y, "#ea580c");
+    y += HINT_SPACE;
+  }
+  st.acts.forEach(function(ac){
+    var bx = sx+P, by = y, cp = 10, ps = 84;
+    var has = !!ac.photo, w = has ? cw-ps-8 : cw;
+    var tl = fitLines(ac.text, 18, 800, w-2*cp-6, maxL);
+    if(lineCount(ac.text, 18, 800, w-2*cp-6) > tl.length) R.cut++;
+    var h = Math.max(cp+20+tl.length*25+cp, has ? ps : 0);
+    var card = {ac:ac, box:{x:bx, y:by, w:w, h:h}, pic:has ? {x:bx+cw-ps, y:by, s:ps} : null, texts:[]};
+    card.texts.push(T("とりくみ", bx+cp+3, by+cp-1, 13, 18, 800, "#c2410c"));
+    textBlock(card.texts, tl, bx+cp+3, by+cp+20, 18, 25, 800, "#7c2d12");
+    R.actCards.push(card);
+    y += h+10;
+  });
+  R.ap = {x:sx, y:ay, w:sw, h:apH};
+  var apFits = (y-10+12) <= (ay+apH);
+
+  // 私の きづき・つぶやき（自由きじゅつ・1つだけ）
+  var npH = STAGE_H-npY;
+  y = npY+12;
+  R.texts.push(T("💭 わたしの きづき・つぶやき", sx+P+2, y, 20, 26, 900, "#0f766e"));
+  y += 32;
+  var noteAvailH = (npY+npH-12)-y;
+  if(!st.note){
+    if(st.hints && st.hints.note) addHint(R.texts, ["ここを タップして、かんじた", "ことを じゆうに かいてみよう"], sx+P+2, y, "#0d9488");
+  }else{
+    var noteMaxLines = Math.max(1, Math.floor(noteAvailH/23));
+    var nlines = fitLines(st.note, 16, 700, cw-6, noteMaxLines);
+    if(lineCount(st.note, 16, 700, cw-6) > nlines.length) R.cut++;
+    textBlock(R.texts, nlines, sx+P+2, y, 16, 23, 700, "#134e4a");
+  }
+  R.np = {x:sx, y:npY, w:sw, h:npH};
+
+  R.fits = apFits && npH >= 110;   // 「きづき・つぶやき」の らんが おしだされないように
+  return R;
+}
+function sideState(){
+  var sc = buildScene(computeMetrics(config), {items:items, links:links, acts:acts, note:note});
+  return {over:sc.sideOverflow, cut:sc.sideCut};
+}
+function sideOverflows(){ return sideState().over; }
+// かいた あとに、みぎの らんから はみでる か、「…」で きれる 文が ふえたら true
+function sideWorse(before){
+  var after = sideState();
+  return after.over || after.cut > before.cut;
+}
+var SIDE_FULL_MSG = "みぎの らんに 入りきらないよ。\nもう すこし みじかく するか、いらない くみあわせや とりくみを けしてね。";
+
+/* ===================== わくの ばしょ（slot）を ととのえる ===================== */
+function normalizeList(list, max){
+  var used = {}, bad = [];
+  list.forEach(function(o){
+    var s = o.slot;
+    if(typeof s === "number" && s >= 0 && s < max && !used[s]) used[s] = true;
+    else bad.push(o);
+  });
+  bad.forEach(function(o){
+    for(var k=0; k<max; k++){ if(!used[k]){ used[k] = true; o.slot = k; return; } }
+    o.slot = max;
+  });
+}
+function normalizeSlots(m){
+  normalizeList(items, m.maxL2);
+  items.forEach(function(it){ it.children = it.children || []; normalizeList(it.children, m.maxL3); });
+}
+function bySlot(a, b){ return a.slot - b.slot; }
+function usedSlots(list){
+  var u = {};
+  list.forEach(function(o){ u[o.slot] = true; });
+  return u;
+}
+function nearestFree(cells, used, p){
+  var best = -1, bd = Infinity;
+  cells.forEach(function(c, i){
+    if(used[i]) return;
+    var d = Math.hypot(c.x+c.w/2-p.x, c.y+c.h/2-p.y);
+    if(d < bd){ bd = d; best = i; }
+  });
+  return best;
+}
+
+// にほんごの へんかんを かくていする Enter では、けっていに しない
+function isEnter(e){ return e.key==="Enter" && !e.isComposing && e.keyCode!==229; }
+
+/* ===================== くみ・ばんごう・なまえ ===================== */
+// 「くみ・ばんごう」（studentName）と「なまえ」（studentRealName）を かいてもらう。
+// なまえは この 端末の ブラウザと、ていしゅつ ファイルにだけ のこる（ヘルプの AI には おくらない）。
+function fullStudentLabel(){
+  return [studentName, studentRealName].filter(Boolean).join("　");
+}
+function renderNameTag(){
+  var el = document.getElementById("nameTag");
+  el.textContent = fullStudentLabel() || "くみ・ばんごう・なまえを かこう";
+  el.title = "クリックすると なおせます";
+  scheduleAutosave();
+}
+document.getElementById("nameTag").addEventListener("click", function(){ askName(null, true); });
+// canCancel が true なら「やめる」を だす（さいしょの にゅうりょくでは ださない）
+function askName(onDone, canCancel){
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<h2>'+(canCancel ? 'くみ・ばんごう・なまえを なおす' : 'くみ・ばんごうと なまえを かこう')+'</h2>'+
+      '<div class="sub">せんせいが みんなの きろくを あつめる ときに つかいます。</div>'+
+      '<label>くみ・ばんごう</label>'+
+      '<input type="text" id="nmNo" maxlength="20" placeholder="れい：4年1くみ 15ばん">'+
+      '<label>なまえ</label>'+
+      '<input type="text" id="nmName" maxlength="20" placeholder="れい：ふくおか たろう">'+
+      '<div class="btnrow">'+(canCancel ? '<button id="nmCancel">やめる</button>' : '')+
+      '<button class="primary" id="nmOk" disabled>けってい</button></div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  var no = ov.querySelector("#nmNo"), nm = ov.querySelector("#nmName"), ok = ov.querySelector("#nmOk");
+  no.value = studentName; nm.value = studentRealName;
+  function check(){ ok.disabled = !no.value.trim() || !nm.value.trim(); }
+  [no, nm].forEach(function(inp){
+    inp.addEventListener("input", check);
+    inp.addEventListener("keydown", function(e){
+      if(!isEnter(e)) return;
+      if(inp === no && !nm.value.trim()) nm.focus();
+      else if(!ok.disabled) ok.click();
+    });
+  });
+  check();
+  var cancel = ov.querySelector("#nmCancel");
+  if(cancel) cancel.addEventListener("click", function(){ ov.remove(); });
+  ok.addEventListener("click", function(){
+    studentName = no.value.trim(); studentRealName = nm.value.trim();
+    ov.remove(); renderNameTag(); render();
+    if(onDone) onDone();
+  });
+  setTimeout(function(){ (no.value ? nm : no).focus(); }, 30);
+}
+
+/* ===================== スローガン ===================== */
+function renderSlogan(){
+  var el = document.getElementById("slogan");
+  el.innerHTML = '<span class="pre"></span><span class="blank'+(config.slogan?"":" empty")+'"></span><span class="post"></span>';
+  el.querySelector(".pre").textContent = config.sloganPre;
+  el.querySelector(".blank").textContent = config.slogan;
+  el.querySelector(".post").textContent = config.sloganPost;
+  el.title = "クリックすると なおせます";
+}
+function askSlogan(first){
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<div class="modal-head"><h2>まず スローガンを きめよう</h2><button class="speak" id="sgSpeak" title="よみあげる">🔊</button></div>'+
+      '<div class="sub"></div>'+
+      '<div class="slogan-line"><span id="sgPre"></span>'+
+        '<input type="text" id="sgIn" maxlength="14">'+
+        '<span id="sgPost"></span></div>'+
+      '<div class="counter" id="sgCount"></div>'+
+      '<div class="btnrow">'+
+        (first ? '' : '<button id="sgCancel">やめる</button>')+
+        '<button class="primary" id="sgOk" disabled>けってい</button></div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  var inp = ov.querySelector("#sgIn"), ok = ov.querySelector("#sgOk"), cnt = ov.querySelector("#sgCount");
+  ov.querySelector("#sgPre").textContent = config.sloganPre;
+  ov.querySelector("#sgPost").textContent = config.sloganPost;
+  ov.querySelector(".sub").textContent =
+    "じぶんが のこしたい "+config.center+"の すがたを ことばに してみよう。";
+  inp.value = config.slogan;
+  ov.querySelector("#sgSpeak").addEventListener("click", function(){
+    speak("まず スローガンを きめよう。" + ov.querySelector(".sub").textContent);
+  });
+  function check(){ setCounter(cnt, inp.value.length, 14); ok.disabled = inp.value.trim().length===0; }
+  inp.addEventListener("input", check);
+  inp.addEventListener("keydown", function(e){ if(isEnter(e) && !ok.disabled) ok.click(); });
+  check();
+  ok.addEventListener("click", function(){
+    var wasDone = sloganDone();
+    config.slogan = inp.value.trim(); ov.remove();
+    if(!wasDone && activeTab === 0) activeTab = 1;
+    renderSlogan(); render();
+  });
+  var cancel = ov.querySelector("#sgCancel");
+  if(cancel) cancel.addEventListener("click", function(){ ov.remove(); });
+  setTimeout(function(){ inp.focus(); }, 30);
+}
+document.getElementById("slogan").addEventListener("click", function(){ askSlogan(false); });
+
+/* ===================== ステップと ガイド ===================== */
+// 道具は 図の なかを 直接 タップして だす（点線の わく・みぎの らんなど）。
+// うえの おびには、いま えらんでいる ステップの せつめいだけを だす。
+var STEPS = [
+  {icon:"🚩", name:"スローガン", color:"#1d4ed8", bg:"#dbeafe",
+   text:"じぶんが のこしたい まちの すがたを きめよう。", lock:""},
+  {icon:"📍", name:"ばしょ", color:"#b45309", bg:"#fef3c7",
+   text:"すきな ばしょを えらんで、青い わくに おこう。みぎがわには、その ばしょの しゃしんを おけるよ。", lock:"まず スローガンを きめよう。"},
+  {icon:"💬", name:"ことば", color:"#15803d", bg:"#dcfce7",
+   text:"ばしょの わくの「＋ ことば」を タップして、おもいでや きもちを かこう。", lock:"まず ばしょを 1つ おこう。"},
+  {icon:"🔗", name:"くみあわせ", color:"#6d28d9", bg:"#ede9fe",
+   text:"ことばの カードを 2つ いじょう えらんで、線で むすぼう。", lock:"まず ことばを 2つ かこう。"},
+  {icon:"🌱", name:"とりくみ", color:"#c2410c", bg:"#ffedd5",
+   text:"スローガンを かなえる ために できる ことを かこう。", lock:"まず ことばを 線で むすぼう。"}
+];
+var DONE_MSG = {icon:"🎉", color:"#0f766e", bg:"#ccfbf1",
+  text:"できたね！「☰ メニュー」から いんさつや がぞうで ほぞんが できるよ。",
+  html:"できたね！「☰ メニュー」から <ruby>印刷<rt>いんさつ</rt></ruby>や <ruby>画像<rt>がぞう</rt></ruby>で ほぞんが できるよ。"};
+var activeTab = 0;
+
+function stepDone(i){
+  if(i===0) return sloganDone();
+  if(i===1) return l2Ready();
+  if(i===2) return linkReady();
+  if(i===3) return links.length > 0;
+  return acts.length > 0;
+}
+function stepOpen(i){
+  for(var k=0; k<i; k++) if(!stepDone(k)) return false;
+  return true;
+}
+function firstOpenStep(){   // まだ おわっていない いちばん はじめの ステップ
+  for(var i=0; i<STEPS.length; i++) if(!stepDone(i)) return i;
+  return STEPS.length-1;
+}
+function exitLinkMode(){
+  linkMode = false; linkSel = [];
+  document.body.classList.remove("linking");
+}
+function setTab(i){
+  for(var k=0; k<i; k++){
+    if(!stepDone(k)){ showToast(STEPS[k+1].lock); return; }
+  }
+  activeTab = i;
+  if(i !== 3) exitLinkMode();
+  render();
+}
+Array.prototype.slice.call(document.querySelectorAll(".step")).forEach(function(b){
+  b.addEventListener("click", function(){ setTab(parseInt(b.dataset.tab, 10)); });
+});
+
+// いまの ステップの せつめいを、うえの おびに だす
+function updateGuideBar(){
+  var t = activeTab;
+  var m = (t===4 && acts.length) ? DONE_MSG : STEPS[t];
+  var bar = document.getElementById("guideBar");
+  bar.style.background = m.bg; bar.style.borderColor = m.color;
+  bar.innerHTML = "";
+  var icon = document.createElement("span"); icon.className = "gb-icon"; icon.textContent = m.icon;
+  var text = document.createElement("span"); text.className = "gb-text"; text.style.color = m.color;
+  if(m.html) text.innerHTML = m.html; else text.textContent = m.text;
+  bar.appendChild(icon); bar.appendChild(text);
+
+  var sp = document.createElement("button");
+  sp.className = "speak"; sp.textContent = "🔊"; sp.title = "よみあげる";
+  sp.addEventListener("click", function(){ speak(m.text); });
+  bar.appendChild(sp);
+
+  // この ステップが おわったら「つぎへ」を だす。さいごは「ていしゅつ」
+  if(t < STEPS.length-1 && stepDone(t)){
+    var nx = document.createElement("button");
+    nx.className = "gb-next";
+    nx.style.borderColor = m.color; nx.style.color = m.color;
+    nx.textContent = "つぎは " + STEPS[t+1].icon + " " + STEPS[t+1].name + " ▶";
+    nx.addEventListener("click", function(){ setTab(t+1); });
+    bar.appendChild(nx);
+  }else if(m === DONE_MSG){
+    var sb = document.createElement("button");
+    sb.className = "primary";
+    sb.textContent = "📤 せんせいに ていしゅつする";
+    sb.addEventListener("click", startSubmit);
+    bar.appendChild(sb);
+  }
+
+  STEPS.forEach(function(s, i){
+    document.getElementById("step"+i).className = "step" +
+      (i===t ? " on" : "") + (stepDone(i) ? " done" : "") + (stepOpen(i) ? "" : " lock");
+  });
+  document.getElementById("btnPng").disabled = items.length===0 && !sloganDone();
+}
+// くみあわせの えらんだ ことばと「むすぶ」ボタンを、画面下に うかべる
+function updateCombineBar(){
+  var bar = document.getElementById("combineBar");
+  if(!linkMode){ bar.hidden = true; bar.innerHTML = ""; return; }
+  bar.hidden = false;
+  bar.innerHTML = "";
+  var names = linkSel.map(function(id){ var c = findChild(id); return c ? c.name : ""; });
+  var namesEl = document.createElement("span");
+  namesEl.className = "cb-names";
+  namesEl.textContent = names.length ? names.join(" ✕ ") : "みどりの カードを 2つ いじょう タップして えらぼう";
+  bar.appendChild(namesEl);
+
+  var go = document.createElement("button");
+  go.className = "primary";
+  go.textContent = "この "+linkSel.length+" こを むすぶ";
+  go.disabled = linkSel.length < 2;
+  go.addEventListener("click", confirmLink);
+  bar.appendChild(go);
+
+  if(linkSel.length){
+    var re = document.createElement("button");
+    re.textContent = "えらびなおす";
+    re.addEventListener("click", function(){ linkSel = []; render(); });
+    bar.appendChild(re);
+  }
+
+  var cancel = document.createElement("button");
+  cancel.textContent = "やめる";
+  cancel.addEventListener("click", function(){ exitLinkMode(); render(); });
+  bar.appendChild(cancel);
+}
+
+/* ===================== 図を 画面に えがく ===================== */
+function findItem(id){ return items.find(function(it){ return it.id===id; }); }
+function findChild(id){ return findChildIn(items, id); }
+function findAct(id){ return acts.find(function(a){ return a.id===id; }); }
+
+function mkDiv(cls, parent){
+  var d = document.createElement("div");
+  d.className = cls;
+  if(parent) parent.appendChild(d);
+  return d;
+}
+function place(el, r){
+  el.style.left = r.x+"px"; el.style.top = r.y+"px";
+  if(r.w != null){ el.style.width = r.w+"px"; el.style.height = r.h+"px"; }
+}
+function addTexts(parent, texts){
+  texts.forEach(function(t){
+    var d = mkDiv("tx" + (t.hint ? " tx-hint" : ""), parent);
+    d.textContent = t.t;
+    d.style.left = t.x+"px"; d.style.top = t.y+"px";
+    d.style.fontSize = t.size+"px"; d.style.lineHeight = t.lh+"px"; d.style.height = t.lh+"px";
+    d.style.fontWeight = t.w; d.style.color = t.c;
+    if(t.a === "center") d.style.transform = "translateX(-50%)";
+  });
+}
+function addPic(parent, p, src, color, payload){
+  var d = mkDiv("pic", parent);
+  place(d, {x:p.x, y:p.y, w:p.w, h:p.h});
+  d.style.borderColor = color;
+  var img = document.createElement("img");
+  img.src = src; img.alt = ""; img.draggable = false;
+  d.appendChild(img);
+  attachDrag(d, Object.assign({}, payload, {isPhoto:true}));
+}
+function addHub(parent, x, y, num, cls){
+  var h = mkDiv("hub"+(cls ? " "+cls : ""), parent);
+  h.style.left = x+"px"; h.style.top = y+"px";
+  h.textContent = num;
+}
+
+function render(){
+  M = computeMetrics(config);
+  normalizeSlots(M);
+  if(!stepOpen(activeTab)) activeTab = firstOpenStep();
+  if(activeTab !== 3 && linkMode) exitLinkMode();
+  S = buildScene(M, {items:items, links:links, acts:acts, note:note, hints:{links:activeTab===3, acts:activeTab===4, note:true}});
+
+  stage.innerHTML = "";
+  stage.style.width = STAGE_W+"px"; stage.style.height = STAGE_H+"px";
+  board.style.width = STAGE_W+"px";
+
+  var city = mkDiv("city", stage);
+  place(city, M.city);
+  mkDiv("city-label", city).textContent = config.center;
+
+  if(activeTab === 1) S.ph2.forEach(function(c){   // 点線の わくは「ばしょ」の ステップの ときだけ
+    var d = mkDiv("ph ph2" + (sloganDone() ? " ph-on" : " ph-off"), stage);
+    place(d, c);
+    d.textContent = "＋ ばしょを おく ところ";
+    d.addEventListener("click", function(){ pickLandmarkForSlot(c.slot); });
+  });
+
+  S.l2.forEach(function(n){
+    var g = mkDiv("grp", stage);
+    g.dataset.gid = n.item.id;
+    var pl2 = {kind:"move2", id:n.item.id};
+    var b = mkDiv("box b2", g);
+    place(b, n.box);
+    attachDrag(b, pl2);
+    addTexts(g, n.texts);
+    var dv = mkDiv("divider", g);
+    place(dv, {x:n.divider.x, y:n.divider.y}); dv.style.width = n.divider.w+"px";
+    n.ph3.forEach(function(c){   // ばしょを おいたら、すぐに ことばも おけるように しめす
+      var d = mkDiv("ph ph3 ph-on", g);
+      place(d, c);
+      d.textContent = "＋ ことば";
+      d.addEventListener("click", function(){ addWordAtSlot(n.item, c.slot); });
+    });
+
+    n.kids.forEach(function(k){
+      var g3 = mkDiv("grp", g);
+      g3.dataset.gid = k.ch.id;
+      var pl3 = {kind:"move3", id:k.ch.id, parent:n.item.id};
+      var b3 = mkDiv("box b3" + (linkSel.indexOf(k.ch.id)>=0 ? " sel" : ""), g3);
+      place(b3, k.box);
+      attachDrag(b3, pl3);
+      addTexts(g3, k.texts);
+    });
+  });
+
+  // ばしょごとの しゃしん わく（みぎに ペアで ならぶ）
+  S.photoPanes.forEach(function(pane){
+    pane.tiles.forEach(function(t){
+      if(t.kind === "add"){
+        var d = mkDiv("addphoto" + (t.big ? " big" : " sm"), stage);
+        place(d, t.box);
+        d.textContent = t.big ? "＋ しゃしん" : "＋";
+        d.title = "しゃしんを ふやす";
+        d.addEventListener("click", function(){ openPlacePhotoPicker(t.item, null); });
+      }else{
+        var pic = mkDiv("pic gpic", stage);
+        place(pic, {x:t.box.x, y:t.box.y, w:t.box.w, h:t.box.h});
+        pic.style.borderColor = "var(--l2-line)";
+        var img = document.createElement("img");
+        img.src = t.src; img.alt = ""; img.draggable = false;
+        pic.appendChild(img);
+        pic.addEventListener("click", function(){ openPlacePhotoPicker(t.item, t.index); });
+      }
+    });
+  });
+
+  // くみあわせの 線と 番号
+  var NS = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(NS, "svg");
+  svg.id = "links";
+  svg.setAttribute("width", STAGE_W); svg.setAttribute("height", STAGE_H);
+  S.links.forEach(function(L){
+    L.segs.forEach(function(p){
+      var ln = document.createElementNS(NS, "line");
+      ln.setAttribute("x1", p.x); ln.setAttribute("y1", p.y);
+      ln.setAttribute("x2", L.hub.x); ln.setAttribute("y2", L.hub.y);
+      ln.setAttribute("stroke", "#7c3aed"); ln.setAttribute("stroke-width", "5");
+      ln.setAttribute("stroke-linecap", "round"); ln.setAttribute("stroke-dasharray", "12 8");
+      ln.setAttribute("opacity", ".8");
+      svg.appendChild(ln);
+    });
+  });
+  stage.appendChild(svg);
+  S.links.forEach(function(L){ addHub(stage, L.hub.x, L.hub.y, L.num); });
+  S.badges.forEach(function(bg){ addHub(stage, bg.x, bg.y, bg.num, "sm"); });
+
+  // みぎの らん（あいている ところを タップしても、くみあわせ・とりくみを ついか できる）
+  var side = S.side;
+  var lpPanel = mkDiv("side-panel lp", stage);
+  place(lpPanel, side.lp);
+  lpPanel.style.cursor = "pointer";
+  lpPanel.title = "タップすると、ことばを えらんで むすべるよ";
+  lpPanel.addEventListener("click", function(){ startLinkFromSide(); });
+
+  var apPanel = mkDiv("side-panel ap", stage);
+  place(apPanel, side.ap);
+  apPanel.style.cursor = "pointer";
+  apPanel.title = "タップすると、とりくみを かけるよ";
+  apPanel.addEventListener("click", function(){ addActFromSide(); });
+
+  var npPanel = mkDiv("side-panel np", stage);
+  place(npPanel, side.np);
+  npPanel.style.cursor = "pointer";
+  npPanel.title = "タップすると、きづき・つぶやきを かけるよ";
+  npPanel.addEventListener("click", function(){ askNote(); });
+
+  addTexts(stage, side.texts);
+  side.linkCards.forEach(function(c){
+    var e = mkDiv("blk", stage);
+    place(e, c.box);
+    e.addEventListener("click", function(){ askLinkText(c.lk); });
+    addHub(stage, c.badge.x, c.badge.y, c.num, "cb");
+    addTexts(stage, c.texts);
+    var x = mkDiv("xbtn", stage);
+    x.style.left = c.del.x+"px"; x.style.top = c.del.y+"px";
+    x.textContent = "×"; x.title = "けす";
+    x.addEventListener("click", function(ev){
+      ev.stopPropagation();
+      links = links.filter(function(l){ return l !== c.lk; });
+      render();
+    });
+  });
+  side.actCards.forEach(function(c){
+    var g = mkDiv("grp", stage);
+    g.dataset.gid = c.ac.id;
+    var pl4 = {kind:"move4", id:c.ac.id};
+    var e = mkDiv("box b4", g);
+    place(e, c.box);
+    attachDrag(e, pl4);   // 動かさずに タップすると メニュー
+    if(c.pic) addPic(g, c.pic, c.ac.photo, "var(--act-line)", pl4);
+    addTexts(g, c.texts);
+  });
+
+  trackUndo();
+  updateGuideBar();
+  updateCombineBar();
+  scheduleAutosave();
+}
+
+/* ===================== もとに もどす ===================== */
+// render() の たびに なかみを くらべて、かわっていたら 1つ まえの じょうたいを とっておく
+var undoStack = [], lastSnap = null, UNDO_MAX = 20;
+function snapState(){
+  return JSON.stringify({items:items, links:links, acts:acts, note:note,
+    slogan:config.slogan, sn:studentName, rn:studentRealName});
+}
+function trackUndo(){
+  var cur = snapState();
+  if(lastSnap !== null && cur !== lastSnap){
+    undoStack.push(lastSnap);
+    if(undoStack.length > UNDO_MAX) undoStack.shift();
+  }
+  lastSnap = cur;
+  document.getElementById("btnUndo").disabled = undoStack.length === 0;
+}
+function resetUndo(){ undoStack = []; lastSnap = null; }
+function undo(){
+  if(!undoStack.length) return;
+  var snap = undoStack.pop(), d = JSON.parse(snap);
+  items = d.items; links = d.links; acts = d.acts; note = d.note;
+  config.slogan = d.slogan; studentName = d.sn; studentRealName = d.rn;
+  lastSnap = snap;
+  exitLinkMode();
+  renderSlogan(); renderNameTag(); render();
+  showToast("↩ 1つ まえに もどしたよ");
+}
+document.getElementById("btnUndo").addEventListener("click", undo);
+document.addEventListener("keydown", function(e){
+  if((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z"){
+    if(document.querySelector(".overlay") || /^(INPUT|TEXTAREA)$/.test((document.activeElement||{}).tagName||"")) return;
+    e.preventDefault(); undo();
+  }
+});
+
+/* ===================== 削除 ===================== */
+function dropLinksOf(ids){
+  links.forEach(function(l){
+    l.members = l.members.filter(function(m){ return ids.indexOf(m)<0; });
+  });
+  links = links.filter(function(l){ return l.members.length >= 2; });
+  linkSel = linkSel.filter(function(id){ return ids.indexOf(id)<0; });
+}
+function removeById(id){
+  var i = items.findIndex(function(it){ return it.id===id; });
+  if(i>=0){
+    if(items[i].children.length && !confirm("なかの ことばも、つないだ 線も いっしょに けします。よいですか？")) return;
+    dropLinksOf(items[i].children.map(function(c){ return c.id; }));
+    items.splice(i,1); render(); return;
+  }
+  items.forEach(function(it){
+    var j = it.children.findIndex(function(c){ return c.id===id; });
+    if(j>=0){ dropLinksOf([id]); it.children.splice(j,1); }
+  });
+  render();
+}
+
+/* ===================== わくを タップしたときの メニュー ===================== */
+function openNodeActions(obj, kind){
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  var label = kind==="4" ? "とりくみ" : kind==="2" ? "ばしょ" : "ことば";
+  var hasPhotoBtn = kind==="4";   // しゃしんは「ばしょ」なら みぎの ギャラリーで、「とりくみ」なら ここで あつかう
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<h2>'+label+'</h2>'+
+      '<div class="sub" id="oaCurrent" style="font-weight:800; color:#334155; font-size:15px"></div>'+
+      '<div class="btnrow" style="flex-direction:column; align-items:stretch; margin-top:16px">'+
+        '<button class="primary" id="oaEdit" style="width:100%; margin-bottom:10px">✏️ かきなおす</button>'+
+        (hasPhotoBtn ? '<button id="oaPhoto" style="width:100%; margin-bottom:10px">📷 しゃしんを '+(obj.photo?"かえる":"つける")+'</button>' : '')+
+        '<button id="oaDel" style="width:100%; margin-bottom:10px; color:#dc2626; border-color:#dc2626">🗑 けす</button>'+
+        '<button id="oaCancel" style="width:100%">やめる</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  var current = kind==="4" ? obj.text : (obj.name + (obj.reason ? "：" + obj.reason : ""));
+  ov.querySelector("#oaCurrent").textContent = current;
+  ov.querySelector("#oaCancel").addEventListener("click", function(){ ov.remove(); });
+  var oaPhoto = ov.querySelector("#oaPhoto");
+  if(oaPhoto) oaPhoto.addEventListener("click", function(){ ov.remove(); openPhotoPicker(obj); });
+  ov.querySelector("#oaEdit").addEventListener("click", function(){
+    ov.remove();
+    if(kind==="2") editL2(obj);
+    else if(kind==="3") editL3(obj);
+    else askAct(obj);
+  });
+  ov.querySelector("#oaDel").addEventListener("click", function(){
+    ov.remove();
+    if(kind==="4"){ acts = acts.filter(function(a){ return a.id!==obj.id; }); render(); }
+    else removeById(obj.id);
+  });
+}
+
+/* ===================== しゃしんを つける ===================== */
+// しゃしんを せいほうけいに きりぬいて、ちいさくした dataURL に する（きょうつう）
+// 端末の ほぞん ばしょ（やく 5MB）に おさまるように、1まい 20〜30KB ほどに する
+var PHOTO_PX_PLACE = 360, PHOTO_PX_ACT = 240, PHOTO_QUALITY = 0.75;
+function cropToSquareDataUrl(file, onDone, px){
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var side = Math.min(img.width, img.height);
+      var sx = (img.width-side)/2, sy = (img.height-side)/2;
+      var out = Math.min(px || PHOTO_PX_PLACE, side);
+      var cv = document.createElement("canvas");
+      cv.width = cv.height = out;
+      var ctx = cv.getContext("2d");
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, out, out);
+      onDone(cv.toDataURL("image/jpeg", PHOTO_QUALITY));
+    };
+    img.onerror = function(){ alert("この しゃしんは よみこめませんでした。"); };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+// とりくみの しゃしん（1まいだけ）。ばしょの しゃしんは openPlacePhotoPicker を つかう
+function openPhotoPicker(obj){
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<h2>📷 しゃしん</h2>'+
+      (obj.photo ? '<img id="pPreview" style="display:block; width:100%; max-height:340px; object-fit:contain; background:#f1f5f9; border-radius:12px; margin-bottom:14px;">' : '')+
+      '<div class="sub">インターネットで みつけた しゃしんや スクリーンショット、カメラで とった しゃしんを つかえます。しゃしんは わくの そとに ならびます。</div>'+
+      '<div class="btnrow" style="flex-direction:column; align-items:stretch; margin-top:16px">'+
+        '<button class="primary" id="pBrowse" style="width:100%; margin-bottom:10px">📁 '+(obj.photo ? "べつの しゃしんに かえる" : "しゃしんを えらぶ")+'</button>'+
+        '<button id="pCamera" style="width:100%; margin-bottom:10px">📷 カメラで とる</button>'+
+        (obj.photo ? '<button id="pRemove" style="width:100%; margin-bottom:10px">🗑 しゃしんを けす</button>' : '')+
+        '<button id="pCancel" style="width:100%">'+(obj.photo ? "とじる" : "やめる")+'</button>'+
+      '</div>'+
+      '<input type="file" accept="image/*" id="fBrowse" style="display:none">'+
+      '<input type="file" accept="image/*" capture="environment" id="fCamera" style="display:none">'+
+    '</div>';
+  document.body.appendChild(ov);
+  var preview = ov.querySelector("#pPreview");
+  if(preview) preview.src = obj.photo;
+
+  function handleFile(file){
+    cropToSquareDataUrl(file, function(url){ obj.photo = url; ov.remove(); render(); }, PHOTO_PX_ACT);
+  }
+  ov.querySelector("#pBrowse").addEventListener("click", function(){ ov.querySelector("#fBrowse").click(); });
+  ov.querySelector("#pCamera").addEventListener("click", function(){ ov.querySelector("#fCamera").click(); });
+  ov.querySelector("#fBrowse").addEventListener("change", function(e){ handleFile(e.target.files[0]); });
+  ov.querySelector("#fCamera").addEventListener("change", function(e){ handleFile(e.target.files[0]); });
+  var rm = ov.querySelector("#pRemove");
+  if(rm) rm.addEventListener("click", function(){ obj.photo = null; ov.remove(); render(); });
+  ov.querySelector("#pCancel").addEventListener("click", function(){ ov.remove(); });
+}
+// ばしょの しゃしん（さいだい MAX_PHOTOS_PER_PLACE まい）。index が null なら ついか、そうでなければ その まいの かんり
+function openPlacePhotoPicker(item, index){
+  item.photos = item.photos || [];
+  var isNew = (index === null || index === undefined);
+  var current = isNew ? null : item.photos[index];
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<h2 id="pTitle"></h2>'+
+      (current ? '<img id="pPreview" style="display:block; width:100%; max-height:340px; object-fit:contain; background:#f1f5f9; border-radius:12px; margin-bottom:14px;">' : '')+
+      '<div class="sub">インターネットで みつけた しゃしんや スクリーンショット、カメラで とった しゃしんを つかえます（さいだい '+MAX_PHOTOS_PER_PLACE+' まいまで）。</div>'+
+      '<div class="btnrow" style="flex-direction:column; align-items:stretch; margin-top:16px">'+
+        '<button class="primary" id="pBrowse" style="width:100%; margin-bottom:10px">📁 '+(current ? "べつの しゃしんに かえる" : "しゃしんを えらぶ")+'</button>'+
+        '<button id="pCamera" style="width:100%; margin-bottom:10px">📷 カメラで とる</button>'+
+        (current ? '<button id="pRemove" style="width:100%; margin-bottom:10px">🗑 この しゃしんを けす</button>' : '')+
+        '<button id="pCancel" style="width:100%">'+(current ? "とじる" : "やめる")+'</button>'+
+      '</div>'+
+      '<input type="file" accept="image/*" id="fBrowse" style="display:none">'+
+      '<input type="file" accept="image/*" capture="environment" id="fCamera" style="display:none">'+
+    '</div>';
+  document.body.appendChild(ov);
+  ov.querySelector("#pTitle").textContent = "📷 「"+(item.name||"")+"」の しゃしん";
+  var preview = ov.querySelector("#pPreview");
+  if(preview) preview.src = current;
+
+  function handleFile(file){
+    cropToSquareDataUrl(file, function(url){
+      if(isNew){
+        if(item.photos.length >= MAX_PHOTOS_PER_PLACE){ ov.remove(); showToast("しゃしんは "+MAX_PHOTOS_PER_PLACE+" まいまでです。"); return; }
+        item.photos.push(url);
+      } else {
+        item.photos[index] = url;
+      }
+      ov.remove(); render();
+    }, PHOTO_PX_PLACE);
+  }
+  ov.querySelector("#pBrowse").addEventListener("click", function(){ ov.querySelector("#fBrowse").click(); });
+  ov.querySelector("#pCamera").addEventListener("click", function(){ ov.querySelector("#fCamera").click(); });
+  ov.querySelector("#fBrowse").addEventListener("change", function(e){ handleFile(e.target.files[0]); });
+  ov.querySelector("#fCamera").addEventListener("change", function(e){ handleFile(e.target.files[0]); });
+  var rm = ov.querySelector("#pRemove");
+  if(rm) rm.addEventListener("click", function(){ item.photos.splice(index,1); ov.remove(); render(); });
+  ov.querySelector("#pCancel").addEventListener("click", function(){ ov.remove(); });
+}
+// まえの バージョンで ほぞんした 大きい しゃしん（480px）を、ひらいた ときに ちいさく しなおす
+function shrinkDataUrl(src, px){
+  return loadImgEl(src).then(function(img){
+    if(!img || img.width <= px) return src;
+    var cv = document.createElement("canvas");
+    cv.width = cv.height = px;
+    var ctx = cv.getContext("2d");
+    ctx.imageSmoothingQuality = "high";
+    drawImageCover(ctx, img, 0, 0, px, px);
+    return cv.toDataURL("image/jpeg", PHOTO_QUALITY);
+  });
+}
+function shrinkOldPhotos(){
+  var jobs = [];
+  items.forEach(function(it){
+    (it.photos||[]).forEach(function(src, i){
+      jobs.push(shrinkDataUrl(src, PHOTO_PX_PLACE).then(function(u){ if(it.photos[i] === src) it.photos[i] = u; }));
+    });
+  });
+  acts.forEach(function(ac){
+    if(ac.photo) jobs.push(shrinkDataUrl(ac.photo, PHOTO_PX_ACT).then(function(u){ ac.photo = u; }));
+  });
+  if(!jobs.length) return;
+  Promise.all(jobs).then(function(){ lastSnap = null; render(); });   // ちいさく しただけなので「もどす」には いれない
+}
+function loadImgEl(src){
+  return new Promise(function(resolve){
+    var img = new Image();
+    img.onload = function(){ resolve(img); };
+    img.onerror = function(){ resolve(null); };
+    img.src = src;
+  });
+}
+
+/* ===================== ヘルプ（つかいかたの しつもん） ===================== */
+function getDeviceId(){
+  var id = "";
+  try { id = localStorage.getItem("marumaru_device_id") || ""; } catch(e){}
+  if(!id){
+    id = "dev_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,10);
+    try { localStorage.setItem("marumaru_device_id", id); } catch(e){}
+  }
+  return id;
+}
+function updateHelpTitle(){
+  document.getElementById("btnHelp").title = "つかいかたの ヘルプ";
+}
+document.getElementById("btnHelp").addEventListener("click", function(){ openHelp(); });
+
+// GAS（先生の サーバー）に おくる。text/plain に すると ファイルで ひらいた ページからでも とどく
+function callHelpApi(payload){
+  return fetch(HELP_API_URL, {
+    method: "POST",
+    headers: {"Content-Type": "text/plain;charset=utf-8"},
+    body: JSON.stringify(payload)
+  }).then(function(r){ return r.json(); });
+}
+var HELP_ERRORS = {
+  limit:       "きょうの しつもんは おしまいだよ。こまったら せんせいに きいてね。",
+  limit_total: "きょうは みんなの しつもんが いっぱいに なったよ。せんせいに きいてね。",
+  busy:        "いま こんでいるよ。すこし まってから もういちど きいてね。",
+  not_configured: "まだ ヘルプの じゅんびが できていないよ。せんせいに きいてね。",
+  network:     "インターネットに つながらないよ。せんせいに きいてね。"
+};
+
+// よくある しつもん（つうしん しないので、すぐ こたえる）。target は 画面で ひからせる ばしょ
+var FAQ = [
+  {q:"ばしょを おくには？", target:"place", a:"あおい わくの なかの「＋ ばしょを おく ところ」を おしてね。"},
+  {q:"ことばを かくには？", target:"word", a:"きいろい わくの なかの「＋ ことば」を おしてね。"},
+  {q:"しゃしんを つけるには？", target:"photo", a:"ばしょの みぎの「＋ しゃしん」を おしてね。"},
+  {q:"線で むすぶには？", target:"link", a:"みぎの「くみあわせ」を おしてから、みどりの カードを 2つ おしてね。"},
+  {q:"かきなおす・けすには？", target:"none", a:"なおしたい カードを おすと「かきなおす」「けす」が でるよ。"},
+  {q:"まちがえて けしちゃった", target:"undo", a:"うえの「もとに もどす」を おしてね。"},
+  {q:"つぎに なにを するの？", target:"speak", a:"うえの いろの おびに かいてあるよ。🔊を おすと よんでくれるよ。"},
+  {q:"ていしゅつ するには？", target:"menu", a:"みぎうえの「メニュー」から「ていしゅつする」を おしてね。"}
+];
+
+/* ---- 画面の ばしょを ひからせて しめす（よむのが にがてな 子の ために） ---- */
+var POINT_TARGETS = {
+  steps:  [".steps"],
+  slogan: ["#slogan"],
+  name:   ["#nameTag"],
+  place:  [".ph2", ".b2", "#step1"],
+  word:   [".ph3", ".b3", "#step2"],
+  photo:  [".addphoto", ".gpic", "#step1"],
+  link:   [".side-panel.lp"],
+  act:    [".side-panel.ap"],
+  note:   [".side-panel.np"],
+  undo:   ["#btnUndo"],
+  next:   [".gb-next", "#guideBar"],
+  speak:  ["#guideBar .speak"],
+  menu:   ["#btnMenu"],
+  help:   ["#btnHelp"]
+};
+function findTarget(key){
+  var list = POINT_TARGETS[key] || [];
+  for(var i=0; i<list.length; i++){ var el = document.querySelector(list[i]); if(el) return el; }
+  return null;
+}
+function pointAt(key){
+  var el = findTarget(key);
+  if(!el){ showToast("いまの がめんには ないみたい。せんせいに きいてね。"); return; }
+  document.querySelectorAll(".pointer-ring,.pointer-tag").forEach(function(x){ x.remove(); });
+  var r = el.getBoundingClientRect();
+  var ring = document.createElement("div");
+  ring.className = "pointer-ring";
+  ring.style.left = (r.left-8)+"px"; ring.style.top = (r.top-8)+"px";
+  ring.style.width = (r.width+16)+"px"; ring.style.height = (r.height+16)+"px";
+  var tag = document.createElement("div");
+  tag.className = "pointer-tag";
+  tag.textContent = "👆 ここだよ！";
+  var below = r.bottom + 60 < window.innerHeight;
+  tag.style.left = Math.min(window.innerWidth-150, Math.max(8, r.left + r.width/2 - 70))+"px";
+  tag.style.top = (below ? r.bottom+14 : Math.max(8, r.top-56))+"px";
+  document.body.appendChild(ring); document.body.appendChild(tag);
+  function clear(){ ring.remove(); tag.remove(); document.removeEventListener("pointerdown", clear, true); }
+  setTimeout(clear, 5000);
+  setTimeout(function(){ document.addEventListener("pointerdown", clear, true); }, 50);
+}
+
+/* ---- こえで しつもん ---- */
+var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+function listenInto(textarea, btn, onChange){
+  var rec = new SpeechRec();
+  rec.lang = "ja-JP"; rec.interimResults = true; rec.maxAlternatives = 1;
+  var base = textarea.value;
+  btn.textContent = "👂 きいているよ…（もう いちど おすと とまる）";
+  btn.classList.add("listening");
+  rec.onresult = function(e){
+    var t = "";
+    for(var i=0; i<e.results.length; i++) t += e.results[i][0].transcript;
+    textarea.value = (base + t).slice(0, parseInt(textarea.maxLength,10) || 200);
+    onChange();
+  };
+  rec.onerror = function(e){
+    if(e.error === "not-allowed" || e.error === "service-not-allowed") showToast("マイクが つかえないよ。せんせいに きいてね。");
+    else if(e.error === "no-speech") showToast("こえが きこえなかったよ。もういちど おしてね。");
+  };
+  rec.onend = function(){ btn.textContent = "🎤 こえで しつもん"; btn.classList.remove("listening"); btn._rec = null; };
+  btn._rec = rec;
+  rec.start();
+}
+
+function openHelp(){
+  var useAi = !!HELP_API_URL;
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<div class="modal-head"><h2>🤖 つかいかたの ヘルプ</h2><button class="speak" id="hpIntro" title="よみあげる">🔊</button></div>'+
+      (useAi ?
+        '<button class="primary big-mic" id="hpMic">🎤 こえで しつもん</button>'+
+        '<textarea id="hpQ" maxlength="200" placeholder="こまって いることを いってね（かいても いいよ）"></textarea>'+
+        '<div class="btnrow" style="margin-top:8px;"><button class="primary" id="hpAsk" disabled>きく</button></div>'
+      : '')+
+      '<div id="hpAnswerWrap" style="display:none; margin-top:14px;">'+
+        '<div class="hint" id="hpAnswer" style="background:#eff6ff; margin-top:0; font-size:19px; line-height:1.7;"></div>'+
+        '<div class="btnrow" style="justify-content:flex-start; margin-top:10px;">'+
+          '<button id="hpSpeak">🔊 もういちど きく</button>'+
+          '<button class="primary" id="hpShow" style="display:none;">👀 どこか みせて</button>'+
+        '</div>'+
+      '</div>'+
+      '<label style="margin-top:18px;">よくある しつもん</label>'+
+      '<div class="faq" id="hpFaq"></div>'+
+      (useAi ? '' : '<div class="sub" style="margin-top:14px;">ここに ない ことは、せんせいに きいてね。</div>')+
+      '<div class="btnrow"><button id="hpCancel">とじる</button></div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  var INTRO = useAi ? "こまって いることを、マイクの ボタンを おして いってね。" : "しりたい ことの ボタンを おしてね。";
+  ov.querySelector("#hpIntro").addEventListener("click", function(){ speak(INTRO); });
+
+  var ansWrap = ov.querySelector("#hpAnswerWrap"), ansEl = ov.querySelector("#hpAnswer");
+  var showBtn = ov.querySelector("#hpShow"), curTarget = "none";
+  function showAnswer(text, target){
+    ansWrap.style.display = "block";
+    ansEl.textContent = text;
+    curTarget = target || "none";
+    showBtn.style.display = (curTarget !== "none" && findTarget(curTarget)) ? "" : "none";
+    speak(text);   // よまなくても わかるように、こたえは じどうで よみあげる
+  }
+  ov.querySelector("#hpSpeak").addEventListener("click", function(){ speak(ansEl.textContent); });
+  showBtn.addEventListener("click", function(){ ov.remove(); speechSynthesis.cancel(); pointAt(curTarget); });
+
+  var faqEl = ov.querySelector("#hpFaq");
+  FAQ.forEach(function(f){
+    var b = document.createElement("button");
+    b.textContent = f.q;
+    b.addEventListener("click", function(){ showAnswer(f.a, f.target); });
+    faqEl.appendChild(b);
+  });
+  ov.querySelector("#hpCancel").addEventListener("click", function(){
+    var mic = ov.querySelector("#hpMic");
+    if(mic && mic._rec) mic._rec.abort();
+    if("speechSynthesis" in window) speechSynthesis.cancel();
+    ov.remove();
+  });
+  if(!useAi) return;
+
+  var qEl = ov.querySelector("#hpQ"), askBtn = ov.querySelector("#hpAsk"), mic = ov.querySelector("#hpMic");
+  function updateState(){ askBtn.disabled = qEl.value.trim().length === 0; }
+  qEl.addEventListener("input", updateState);
+  if(SpeechRec){
+    mic.addEventListener("click", function(){
+      if(mic._rec){ mic._rec.stop(); return; }
+      if("speechSynthesis" in window) speechSynthesis.cancel();
+      qEl.value = "";
+      listenInto(qEl, mic, updateState);
+    });
+  }else mic.remove();
+
+  askBtn.addEventListener("click", function(){
+    var q = qEl.value.trim();
+    if(!q) return;
+    askBtn.disabled = true; askBtn.textContent = "かんがえているよ…";
+    callHelpApi({action:"ask", question:q, deviceId:getDeviceId()}).then(function(res){
+      if(res && res.ok) showAnswer(res.answer, res.target);
+      else showAnswer(HELP_ERRORS[res && res.error] || "うまく こたえられなかったよ。もういちど きいてね。", "none");
+    }).catch(function(){
+      showAnswer(HELP_ERRORS.network, "none");
+    }).then(function(){
+      askBtn.textContent = "きく"; updateState();
+    });
+  });
+}
+
+/* ===================== 線でむすぶ ===================== */
+function pickForLink(id){
+  var i = linkSel.indexOf(id);
+  if(i>=0) linkSel.splice(i,1); else linkSel.push(id);
+  render();
+}
+function sameSet(a, b){
+  if(a.length !== b.length) return false;
+  var s = a.slice().sort(), t = b.slice().sort();
+  return s.every(function(v,i){ return v===t[i]; });
+}
+function confirmLink(){
+  if(linkSel.length < 2) return;
+  var mem = linkSel.slice();
+  if(links.some(function(l){ return sameSet(l.members, mem); })){
+    alert("この くみあわせは もう つながっています。"); return;
+  }
+  linkSel = [];
+  askLinkText({id:null, members:mem});
+}
+// みぎの「くみあわせ」らんを タップした ときの いりぐち
+function startLinkFromSide(){
+  setTab(3);
+  if(activeTab === 3 && !linkMode){
+    linkMode = true; linkSel = [];
+    document.body.classList.add("linking");
+    render();
+  }
+}
+function askLinkText(lk){
+  var names = lk.members.map(function(id){ var c = findChild(id); return c ? c.name : null; });
+  if(names.some(function(n){ return n===null; })) return;
+  var n = lk.members.length;
+  openDialog({
+    title: n+"つを かけあわせて 考えたことは？",
+    sub: names.map(function(s){ return "「"+s+"」"; }).join(" ✕ "),
+    needName: false,
+    reasonMax: 120,
+    reasonLabel: "かんがえたことを かこう",
+    initial: lk.text || "",
+    ph: "",
+    onOk: function(v){
+      if(lk.id === null){
+        var before = sideState();
+        var nl = {id:++uid, members:lk.members, text:v.reason};
+        links.push(nl);
+        if(sideWorse(before)){ links.pop(); uid--; return SIDE_FULL_MSG; }   // ダイアログは とじずに、かいた ことを のこす
+        exitLinkMode();
+      }else{
+        var before2 = sideState(), oldText = lk.text;
+        lk.text = v.reason;
+        if(sideWorse(before2)){ lk.text = oldText; return SIDE_FULL_MSG; }
+      }
+      render();
+    },
+    onCancel: function(){ render(); }
+  });
+}
+
+/* ===================== とりくみ（福岡市の わくの そと） ===================== */
+// みぎの「とりくみ」らんを タップした ときの いりぐち
+function addActFromSide(){
+  setTab(4);
+  if(activeTab === 4) askAct({id:null, text:"", index: acts.length});
+}
+function askAct(ac){
+  openDialog({
+    title: "スローガンを じつげんする ために できる とりくみは？",
+    sub: "「"+config.sloganPre+" "+(config.slogan||"　　")+" "+config.sloganPost+"」に するために、じぶんが できること・まちで やりたいこと。",
+    needName: false,
+    reasonMax: 140,
+    reasonLabel: "とりくみを かこう",
+    initial: ac.text || "",
+    ph: "",
+    onOk: function(v){
+      if(ac.id === null){
+        var before = sideState();
+        var na = {id:++uid, text:v.reason, photo:null};
+        acts.splice(clampN(ac.index, 0, acts.length), 0, na);
+        if(sideWorse(before)){ acts.splice(acts.indexOf(na), 1); uid--; return SIDE_FULL_MSG; }
+      }else{
+        var before2 = sideState(), oldText = ac.text;
+        ac.text = v.reason;
+        if(sideWorse(before2)){ ac.text = oldText; return SIDE_FULL_MSG; }
+      }
+      render();
+    },
+    onCancel: function(){ render(); }
+  });
+}
+
+/* ===================== わたしの きづき・つぶやき（図の さいご） ===================== */
+function askNote(){
+  openDialog({
+    title: "この 図を つくって、気づいたこと・思ったことは？",
+    sub: "がんばった ことや、もっと しりたく なった ことなど、自由に かいてみよう。",
+    needName: false,
+    reasonMax: 200,
+    reasonLabel: "きづき・つぶやきを かこう",
+    initial: note || "",
+    ph: "",
+    onOk: function(v){
+      var before = sideState(), old = note;
+      note = v.reason;
+      if(sideWorse(before)){ note = old; return "ながすぎて ぜんぶ 見えなく なるよ。\nもう すこし みじかく してね。"; }
+      render();
+    },
+    onCancel: function(){ render(); }
+  });
+}
+
+/* ===================== ドラッグ ===================== */
+function attachDrag(el, payload){
+  el.addEventListener("pointerdown", function(ev){
+    ev.preventDefault(); ev.stopPropagation();
+    if(linkMode){
+      if(payload.kind==="move3") pickForLink(payload.id);
+      return;
+    }
+    startDrag(ev, payload);
+  });
+}
+function toStage(cx, cy){
+  var r = stage.getBoundingClientRect(), s = r.width/STAGE_W;
+  return { x:(cx-r.left)/s, y:(cy-r.top)/s };
+}
+function inRect(p, r){ return p.x>=r.x && p.x<=r.x+r.w && p.y>=r.y && p.y<=r.y+r.h; }
+function slotAt(p){ return M.slots2.findIndex(function(c){ return inRect(p, c); }); }
+function hostAt(p){ return S.l2.find(function(n){ return inRect(p, n.cell); }) || null; }
+function cellAt3(node, p){ return node.cells3.findIndex(function(c){ return inRect(p, c); }); }
+function inSide(p){ return p.x >= M.side.x-8 && p.y >= 0 && p.y <= STAGE_H; }
+function actIndexAt(p, exclude){
+  return S.side.actCards.filter(function(c){
+    return c.ac !== exclude && c.box.y + c.box.h/2 < p.y;
+  }).length;
+}
+
+var dropHi = null;
+function showHi(r){
+  if(!dropHi){ dropHi = document.createElement("div"); dropHi.id = "dropHi"; }
+  if(dropHi.parentNode !== stage) stage.appendChild(dropHi);
+  place(dropHi, r);
+}
+function hideHi(){ if(dropHi && dropHi.parentNode) dropHi.parentNode.removeChild(dropHi); }
+
+function startDrag(ev, payload){
+  drag = { payload:payload, sx:ev.clientX, sy:ev.clientY, moved:false, grp:null };
+  var g = document.createElement("div");
+  g.id = "ghost";
+  g.hidden = true;   // うごかしはじめてから だす（タップの ときに ちらつかない）
+  var k = payload.kind;
+  if(k==="move4"){
+    g.style.background = "#fff7ed"; g.style.border = "3px solid #ea580c";
+    g.style.color = "#7c2d12"; g.style.width = "200px"; g.style.minHeight = "50px";
+    g.style.maxHeight = "90px"; g.style.overflow = "hidden";
+    g.textContent = findAct(payload.id).text;
+  }
+  else if(k==="move3"){
+    g.style.background = "#bbf7d0"; g.style.border = "4px solid #16a34a";
+    g.style.width = "150px"; g.style.height = "80px";
+    g.textContent = findChild(payload.id).name;
+  }else{
+    g.style.background = "#fde68a"; g.style.border = "5px solid #d97706";
+    g.style.width = "200px"; g.style.height = "110px";
+    g.textContent = findItem(payload.id).name;
+  }
+  g.style.left = ev.clientX+"px"; g.style.top = ev.clientY+"px";
+  document.body.appendChild(g);
+  drag.ghost = g;
+  drag.grp = stage.querySelector('[data-gid="'+payload.id+'"]');
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  window.addEventListener("pointercancel", onUp);
+}
+function onMove(ev){
+  if(!drag) return;
+  if(!drag.moved && Math.hypot(ev.clientX-drag.sx, ev.clientY-drag.sy) > 5){
+    drag.moved = true;
+    drag.ghost.hidden = false;
+    if(drag.grp) drag.grp.style.opacity = ".35";
+  }
+  if(!drag.moved) return;
+  drag.ghost.style.left = ev.clientX+"px";
+  drag.ghost.style.top  = ev.clientY+"px";
+
+  var k = drag.payload.kind, p = toStage(ev.clientX, ev.clientY), target = null;
+  if(k==="move2"){
+    var i = slotAt(p);
+    if(i>=0) target = M.slots2[i];
+  }else if(k==="move3"){
+    var n = hostAt(p);
+    if(n){ var j = cellAt3(n, p); target = j>=0 ? n.cells3[j] : n.box; }
+  }else{
+    if(inSide(p)) target = S.side.ap;
+  }
+  if(target) showHi(target); else hideHi();
+}
+function onUp(ev){
+  if(!drag) return;
+  window.removeEventListener("pointermove", onMove);
+  window.removeEventListener("pointerup", onUp);
+  window.removeEventListener("pointercancel", onUp);
+  drag.ghost.remove();
+  hideHi();
+  var d = drag; drag = null;
+  if(d.grp) d.grp.style.opacity = "";
+
+  var k = d.payload.kind;
+  var p = toStage(ev.clientX, ev.clientY);
+
+  if(k==="move2"){
+    var it = findItem(d.payload.id);
+    if(!it) return;
+    if(!d.moved){ openNodeActions(it, "2"); return; }   // タップだけ → メニュー
+    var to = slotAt(p);
+    if(to >= 0 && to !== it.slot){   // ほかの ばしょが あれば 入れかえ
+      var other = items.find(function(o){ return o.slot===to; });
+      if(other) other.slot = it.slot;
+      it.slot = to;
+    }
+    render();
+  }
+  else if(k==="move3"){
+    var ch = findChild(d.payload.id);
+    if(!ch) return;
+    if(!d.moved){ openNodeActions(ch, "3"); return; }   // タップだけ → メニュー
+    var host2 = hostAt(p);
+    if(!host2){ render(); return; }
+    var oldp = findItem(d.payload.parent), tgt = host2.item;
+    var j2 = cellAt3(host2, p);
+    var occ = j2 >= 0 ? tgt.children.find(function(c){ return c.slot===j2; }) : null;
+    if(tgt === oldp){
+      if(j2 >= 0 && j2 !== ch.slot){
+        if(occ) occ.slot = ch.slot;
+        ch.slot = j2;
+      }
+    }else if(occ){   // ほかの ばしょの カードと 入れかえ
+      tgt.children.splice(tgt.children.indexOf(occ), 1);
+      oldp.children.splice(oldp.children.indexOf(ch), 1);
+      occ.slot = ch.slot; ch.slot = j2;
+      oldp.children.push(occ); tgt.children.push(ch);
+    }else{
+      if(tgt.children.length >= M.maxL3){
+        alert("1つの ばしょには "+M.maxL3+" こまでです。"); render(); return;
+      }
+      if(j2 < 0) j2 = nearestFree(host2.cells3, usedSlots(tgt.children), p);
+      oldp.children.splice(oldp.children.indexOf(ch), 1);
+      ch.slot = j2;
+      tgt.children.push(ch);
+    }
+    render();
+  }
+  else if(k==="move4"){
+    var ac = findAct(d.payload.id);
+    if(!ac) return;
+    if(!d.moved){   // タップだけ → メニュー（しゃしんを タップした ときは、しゃしんの メニューを だす）
+      if(d.payload.isPhoto) openPhotoPicker(ac); else openNodeActions(ac, "4");
+      return;
+    }
+    if(inSide(p)){
+      var ni = actIndexAt(p, ac);
+      var rest = acts.filter(function(a){ return a !== ac; });
+      rest.splice(ni, 0, ac);
+      acts = rest;
+    }
+    render();
+  }
+}
+
+/* ===================== 点線の わくを タップして おく ===================== */
+function pickLandmarkForSlot(slot){
+  if(linkMode) return;
+  if(!sloganDone()){ showToast("まず スローガンを きめよう。うえの ぶんを タップしてね。"); return; }
+  if(items.length >= M.maxL2 || items.some(function(it){ return it.slot===slot; })) return;
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<h2>📍 どの ばしょを おく？</h2>'+
+      '<div class="sub">えらぶと、その ばしょの りゆうを かく がめんに すすみます。</div>'+
+      '<div class="pick-grid"></div>'+
+      '<div class="btnrow"><button id="pkCancel">やめる</button></div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  var grid = ov.querySelector(".pick-grid");
+  function choose(name){ ov.remove(); askL2(name, slot); }
+  config.landmarks.forEach(function(line){
+    var lm = parseLandmark(line), name = lm.name;
+    if(!name || items.some(function(it){ return it.name===name; })) return;
+    var b = document.createElement("button");
+    if(lm.yomi){
+      var rb = document.createElement("ruby");
+      rb.appendChild(document.createTextNode(name));
+      var rt = document.createElement("rt"); rt.textContent = lm.yomi;
+      rb.appendChild(rt); b.appendChild(rb);
+    }else b.textContent = name;
+    b.addEventListener("click", function(){ choose(name); });
+    grid.appendChild(b);
+  });
+  var add = document.createElement("button");
+  add.className = "add";
+  add.textContent = "＋ じぶんで かく";
+  add.addEventListener("click", function(){ choose(null); });
+  grid.appendChild(add);
+  ov.querySelector("#pkCancel").addEventListener("click", function(){ ov.remove(); });
+}
+// ランドマークの ふりがな。せっていで「名前|よみかた」と かけば そちらを つかう
+var LANDMARK_YOMI = {
+  "櫛田神社":"くしだじんじゃ", "筥崎宮":"はこざきぐう", "博多駅":"はかたえき", "福岡タワー":"ふくおかタワー",
+  "大濠公園":"おおほりこうえん", "福岡城あと":"ふくおかじょうあと", "福岡PayPayドーム":"ふくおかペイペイドーム",
+  "福岡市博物館":"ふくおかしはくぶつかん", "天神":"てんじん", "中洲":"なかす", "志賀島":"しかのしま", "能古島":"のこのしま",
+  "太宰府天満宮":"だざいふてんまんぐう", "九州国立博物館":"きゅうしゅうこくりつはくぶつかん"
+};
+function parseLandmark(line){
+  var parts = String(line).split(/[|｜]/), name = parts[0].trim();
+  var yomi = (parts[1] || "").trim() || LANDMARK_YOMI[name] || "";
+  return {name:name, yomi:yomi};
+}
+function addWordAtSlot(item, slot){
+  if(linkMode) return;
+  if(item.children.length >= M.maxL3 || item.children.some(function(c){ return c.slot===slot; })) return;
+  askL3(item, slot);
+}
+
+/* ===================== 問いかけ ===================== */
+function askL2(name, slot){
+  openDialog({
+    title: "どうして この ばしょを えらんだの？",
+    sub: name ? ("えらんだ ばしょ：" + name) : "ばしょの 名前と、えらんだ りゆうを かこう",
+    needName: !name, nameLabel: "ばしょの 名前", nameMax: 16, reasonMax: 120,
+    reasonLabel: "えらんだ りゆうを かこう（ゆうめい？よく いく？ など）",
+    ph: "れい：ゆうめいで、みんな しっているから",
+    onOk: function(v){
+      items.push({id:++uid, name:(name||v.name), reason:v.reason, slot:slot, children:[], photos:[]});
+      render();
+    },
+    onCancel: function(){ render(); }
+  });
+}
+function editL2(it){
+  openDialog({
+    title: "ばしょを かきなおそう",
+    sub: "「"+it.name+"」の 名前と りゆうを なおせます",
+    needName: true, nameLabel: "ばしょの 名前", nameMax: 16, reasonMax: 120,
+    reasonLabel: "えらんだ りゆうを かこう（ゆうめい？よく いく？ など）",
+    initialName: it.name, initial: it.reason,
+    ph: "れい：ゆうめいで、みんな しっているから",
+    onOk: function(v){ it.name = v.name; it.reason = v.reason; render(); },
+    onCancel: function(){ render(); }
+  });
+}
+function askL3(parent, slot){
+  openDialog({
+    title: "「"+parent.name+"」と きいて うかぶ ことばは？",
+    sub: "りゆうでは なく、じぶんだけの おもいでや きもちを ことばに してみよう",
+    needName: true, nameLabel: "うかんだ ことば", nameMax: 14, reasonMax: 120,
+    reasonLabel: "その ことばを えらんだ わけを かこう（みじかくて いいよ）",
+    ph: "れい：かぞくと はなびを みた ばしょ",
+    onOk: function(v){
+      parent.children.push({id:++uid, name:v.name, reason:v.reason, slot:slot});
+      render();
+    },
+    onCancel: function(){ render(); }
+  });
+}
+function editL3(ch){
+  openDialog({
+    title: "ことばを かきなおそう",
+    sub: "りゆうでは なく、じぶんだけの おもいでや きもちを かいてね",
+    needName: true, nameLabel: "うかんだ ことば", nameMax: 14, reasonMax: 120,
+    reasonLabel: "その ことばを えらんだ わけを かこう（みじかくて いいよ）",
+    initialName: ch.name, initial: ch.reason,
+    ph: "れい：かぞくと はなびを みた ばしょ",
+    onOk: function(v){ ch.name = v.name; ch.reason = v.reason; render(); },
+    onCancel: function(){ render(); }
+  });
+}
+function openDialog(o){
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<div class="modal-head"><h2></h2><button class="speak" id="dSpeak" title="よみあげる">🔊</button></div>'+
+      '<div class="sub"></div>'+
+      (o.needName ? '<label id="lbName"></label><input type="text" id="dName" maxlength="'+o.nameMax+'">' +
+                    '<div class="counter" id="dNameCount"></div>' : '')+
+      '<label id="lbReason"></label>'+
+      '<textarea id="dReason" maxlength="'+o.reasonMax+'"></textarea>'+
+      '<div class="counter" id="dCount"></div>'+
+      '<div class="hint" id="dHint"></div>'+
+      '<div class="btnrow"><button id="dCancel">やめる</button>'+
+      '<button class="primary" id="dOk" disabled>けってい</button></div>'+
+    '</div>';
+  ov.querySelector("h2").textContent = o.title;
+  ov.querySelector(".sub").textContent = o.sub;
+  if(o.needName) ov.querySelector("#lbName").textContent = o.nameLabel;
+  ov.querySelector("#lbReason").textContent = o.reasonLabel || "こたえを かこう";
+  var hint = ov.querySelector("#dHint");
+  var HINT_HTML = "かかないと つぎに すすめません。<br>かいた ことばは 図の なかに ひょうじ されます。";
+  hint.innerHTML = HINT_HTML;
+  ov.querySelector("#dReason").placeholder = o.ph;
+  document.body.appendChild(ov);
+
+  var nameEl = ov.querySelector("#dName");
+  var reason = ov.querySelector("#dReason");
+  var okBtn  = ov.querySelector("#dOk");
+  if(o.initialName && nameEl) nameEl.value = o.initialName;
+  if(o.initial) reason.value = o.initial;
+
+  ov.querySelector("#dSpeak").addEventListener("click", function(){
+    speak(o.title + "。" + o.sub + "。" + (o.reasonLabel || ""));
+  });
+
+  function check(){
+    setCounter(ov.querySelector("#dCount"), reason.value.length, o.reasonMax);
+    if(nameEl) setCounter(ov.querySelector("#dNameCount"), nameEl.value.length, o.nameMax);
+    okBtn.disabled = !(reason.value.trim().length>0 && (!nameEl || nameEl.value.trim().length>0));
+    if(hint.classList.contains("err")){ hint.classList.remove("err"); hint.style.background = ""; hint.innerHTML = HINT_HTML; }
+  }
+  reason.addEventListener("input", check);
+  if(nameEl){
+    nameEl.addEventListener("input", check);
+    nameEl.addEventListener("keydown", function(e){ if(isEnter(e)) reason.focus(); });
+  }
+  check();
+
+  okBtn.addEventListener("click", function(){
+    var v = {name: nameEl ? nameEl.value.trim() : "", reason: reason.value.trim()};
+    var err = o.onOk(v);
+    if(typeof err === "string"){   // うまく いかなかった ときは とじずに、かいた ことを のこす
+      hint.classList.add("err");
+      hint.style.background = "#fee2e2";
+      hint.textContent = err;
+      hint.style.whiteSpace = "pre-line";
+      return;
+    }
+    ov.remove();
+  });
+  ov.querySelector("#dCancel").addEventListener("click", function(){ ov.remove(); o.onCancel(); });
+  setTimeout(function(){ (nameEl||reason).focus(); }, 30);
+}
+// のこりの もじすうを だす（のこり すくないと オレンジ、いっぱいで あか）
+function setCounter(el, len, max){
+  if(!el) return;
+  var left = max - len;
+  el.textContent = left <= 0 ? "もう かけないよ（" + max + " もじ まで）" : "あと " + left + " もじ";
+  el.className = "counter" + (left <= 0 ? " full" : left <= Math.max(5, Math.round(max*0.15)) ? " near" : "");
+}
+
+/* ===================== よみあげ ===================== */
+function speak(text){
+  if(!("speechSynthesis" in window)){ showToast("この きかいでは よみあげが つかえません。"); return; }
+  speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(String(text).replace(/[🚩📍💬🔗🌱🎉✏️📷🗑📤]/gu, ""));
+  u.lang = "ja-JP"; u.rate = 0.9;
+  speechSynthesis.speak(u);
+}
+
+/* ===================== 設定（先生用） ===================== */
+// 先生用パスワードは GAS の スクリプト プロパティ（SETTINGS_PASSWORD）で 確認する。
+// HELP_API_URL が まだ 空の ときだけ、LOCAL_PASSWORD_HASH で 確認する（パスワードそのものは ファイルに 書かない）
+function sha256Hex(text){
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)).then(function(buf){
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2, "0"); }).join("");
+  });
+}
+function verifyPassword(pw){   // → Promise<"ok"|"wrong"|"locked"|"network">
+  if(!HELP_API_URL){
+    return sha256Hex("marumaru:" + pw).then(function(h){ return h === LOCAL_PASSWORD_HASH ? "ok" : "wrong"; });
+  }
+  return callHelpApi({action:"verify", password:pw}).then(function(res){
+    return res && res.ok ? "ok" : (res && res.error === "locked" ? "locked" : "wrong");
+  }).catch(function(){ return "network"; });
+}
+
+document.getElementById("btnSettings").addEventListener("click", function(){
+  openSettingsGate();
+});
+function openSettingsGate(){
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<h2>🔒 せんせい用 せってい</h2>'+
+      '<div class="sub">パスワードを かこう</div>'+
+      '<input type="password" id="pwIn" maxlength="30" autocomplete="off">'+
+      '<div class="hint" id="pwMsg" style="display:none; background:#fee2e2;"></div>'+
+      '<div class="btnrow"><button id="pwCancel">やめる</button>'+
+      '<button class="primary" id="pwOk">けってい</button></div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  var inp = ov.querySelector("#pwIn"), msg = ov.querySelector("#pwMsg");
+  ov.querySelector("#pwCancel").addEventListener("click", function(){ ov.remove(); });
+  var okBtn = ov.querySelector("#pwOk"), busy = false;
+  function tryPw(){
+    if(busy || !inp.value) return;
+    busy = true; okBtn.disabled = true; okBtn.textContent = "たしかめています…";
+    verifyPassword(inp.value).then(function(r){
+      busy = false; okBtn.disabled = false; okBtn.textContent = "けってい";
+      if(r === "ok"){ ov.remove(); openSettingsDialog(); return; }
+      msg.style.display = "block";
+      msg.textContent = r === "locked"  ? "まちがいが つづいたので、10ぷん まってね。" :
+                        r === "network" ? "インターネットに つないでから もういちど ためしてね。" :
+                                          "せんせいを よんでね。";
+      inp.value = "";
+      inp.focus();
+    });
+  }
+  okBtn.addEventListener("click", tryPw);
+  inp.addEventListener("keydown", function(e){ if(isEnter(e)) tryPw(); });
+  setTimeout(function(){ inp.focus(); }, 30);
+}
+function openSettingsDialog(){
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<h2>設定（先生用）</h2>'+
+      '<div class="sub">授業に合わせて調整できます。上限を増やすと、わくは自動で小さくなります。</div>'+
+      '<label>いちばん大きい わく（ステージ全体）の名前</label>'+
+      '<input type="text" id="sCenter" maxlength="12">'+
+      '<label>スローガンの文（　）の前後のことば</label>'+
+      '<div class="slogan-line" style="font-size:16px">'+
+        '<input type="text" id="sPre" maxlength="14" style="width:150px !important;font-size:16px !important">'+
+        '<span>（子どもの記入）</span>'+
+        '<input type="text" id="sPost" maxlength="14" style="width:110px !important;font-size:16px !important">'+
+      '</div>'+
+      '<label>2階層（ランドマーク）の上限　1〜6</label>'+
+      '<input class="num" type="number" id="sMax2" min="1" max="6">'+
+      '<label>3階層（自由記述）の上限　※ランドマーク1つあたり　1〜5</label>'+
+      '<input class="num" type="number" id="sMax3" min="1" max="5">'+
+      '<label>ランドマーク一覧（1行に1つ。「櫛田神社|くしだじんじゃ」のように書くと ふりがなが付きます）</label>'+
+      '<textarea id="sList" style="min-height:150px"></textarea>'+
+      '<label>ヘルプ（AIへの質問）</label>'+
+      '<div class="sub" id="sHelpState" style="margin-top:-4px;"></div>'+
+      '<div class="btnrow" style="justify-content:flex-start; margin-top:0;">'+
+        '<button id="sHelpTest">🔌 つながるか テストする</button>'+
+      '</div>'+
+      '<label>ファイルで バックアップ（先生用・ふだんは つかいません）</label>'+
+      '<div class="btnrow" style="justify-content:flex-start; margin-top:0;">'+
+        '<button id="sExportFile">📤 この きろくを ファイルに 書き出す</button>'+
+        '<button id="sImportFile">📥 ファイルから 読み込む</button>'+
+      '</div>'+
+      '<div class="btnrow" style="justify-content:flex-start; margin-top:8px;">'+
+        '<button id="sRestore">↩「はじめから」「あたらしく はじめる」の まえに もどす</button>'+
+      '</div>'+
+      '<input type="file" accept="application/json" id="sImportInput" style="display:none">'+
+      '<div class="btnrow"><button id="sCancel">キャンセル</button>'+
+      '<button class="primary" id="sOk">保存</button></div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  ov.querySelector("#sCenter").value = config.center;
+  ov.querySelector("#sPre").value = config.sloganPre;
+  ov.querySelector("#sPost").value = config.sloganPost;
+  ov.querySelector("#sMax2").value = config.maxL2;
+  ov.querySelector("#sMax3").value = config.maxL3;
+  ov.querySelector("#sList").value = config.landmarks.join("\n");
+  var helpState = ov.querySelector("#sHelpState");
+  helpState.textContent = HELP_API_URL
+    ? "GAS に つながる せっていです。APIキー・パスワード・1日の回数上限は GAS の スクリプト プロパティで かえられます。"
+    : "⚠ HELP_API_URL が 未設定です。AIへの質問は つかえず、パスワードは 予備の もの（HTML内のハッシュ）で 確認しています。くばる まえに 設定してください。";
+  if(!HELP_API_URL) helpState.style.color = "#dc2626";
+  ov.querySelector("#sHelpTest").addEventListener("click", function(){
+    var b = this;
+    if(!HELP_API_URL){ alert("HELP_API_URL が 未設定です。"); return; }
+    b.disabled = true; b.textContent = "テスト中…";
+    fetch(HELP_API_URL).then(function(r){ return r.json(); }).then(function(res){
+      alert(res && res.app === "marumaru-help" ? "✅ GAS に つながりました。" : "GAS から 思っていない 返事が きました。URL を 確認してください。");
+    }).catch(function(){
+      alert("つながりませんでした。URL と、デプロイの「アクセスできるユーザー：全員」を 確認してください。");
+    }).then(function(){ b.disabled = false; b.textContent = "🔌 つながるか テストする"; });
+  });
+  ov.querySelector("#sExportFile").addEventListener("click", exportRecordToFile);
+  ov.querySelector("#sRestore").addEventListener("click", function(){
+    var data = null;
+    try { data = JSON.parse(localStorage.getItem(backupKey()) || "null"); } catch(e){}
+    if(!data){ alert("もどせる きろくは ありません。"); return; }
+    var when = data.savedAt ? new Date(data.savedAt).toLocaleString("ja-JP") : "";
+    if(!confirm("「"+([data.studentName, data.studentRealName].filter(Boolean).join(" ")||"なまえ なし")+"」の きろく（"+when+"）に もどします。\nいまの きろくは かわりに バックアップに のこります。よいですか？")) return;
+    backupRecord(currentRecord());
+    ov.remove();
+    applyRecord(data);
+  });
+  ov.querySelector("#sImportFile").addEventListener("click", function(){
+    ov.querySelector("#sImportInput").click();
+  });
+  ov.querySelector("#sImportInput").addEventListener("change", function(e){
+    importRecordFromFile(e.target.files[0], function(){ ov.remove(); });
+    e.target.value = "";
+  });
+  ov.querySelector("#sCancel").addEventListener("click", function(){ ov.remove(); });
+  ov.querySelector("#sOk").addEventListener("click", function(){
+    var m2 = Math.min(6, Math.max(1, parseInt(ov.querySelector("#sMax2").value,10)||4));
+    var m3 = Math.min(5, Math.max(1, parseInt(ov.querySelector("#sMax3").value,10)||2));
+    if(m2 < items.length){ alert("すでに "+items.length+" こ置かれています。上限をそれ以上にしてください。"); return; }
+    if(items.some(function(it){ return it.children.length > m3; })){
+      alert("すでに上限を超える数のカードが置かれています。先に減らしてください。"); return;
+    }
+    config.center = ov.querySelector("#sCenter").value.trim() || "福岡市";
+    config.sloganPre  = ov.querySelector("#sPre").value.trim()  || "100年後も";
+    config.sloganPost = ov.querySelector("#sPost").value.trim() || "まち";
+    config.maxL2 = m2; config.maxL3 = m3;
+    var list = ov.querySelector("#sList").value.split("\n")
+      .map(function(s){ return s.trim(); }).filter(Boolean);
+    if(list.length) config.landmarks = list;
+    ov.remove();
+    renderSlogan();
+    render();
+    updateHelpTitle();
+    saveConfigToStorage();
+  });
+}
+
+/* ===================== きれいに ならべる（すきまを つめる） ===================== */
+document.getElementById("btnTidy").addEventListener("click", function(){
+  if(!items.length) return;
+  items.slice().sort(bySlot).forEach(function(it, i){ it.slot = i; });
+  items.forEach(function(it){
+    it.children.slice().sort(bySlot).forEach(function(c, j){ c.slot = j; });
+  });
+  render();
+});
+
+/* ===================== はじめから ===================== */
+document.getElementById("btnReset").addEventListener("click", function(){
+  var anything = hasWork() || studentName || studentRealName;
+  if(anything && !confirm("スローガンや くみ・ばんごう・なまえも ふくめて、ぜんぶ けして はじめから やりますか？")) return;
+  if(anything) backupRecord(currentRecord());   // まちがえた ときは 設定から もどせる
+  items = []; links = []; acts = []; note = "";
+  config.slogan = ""; studentName = ""; studentRealName = "";
+  exitLinkMode();
+  activeTab = 0;
+  renderSlogan(); renderNameTag(); render();
+  askName(function(){ askSlogan(true); });
+});
+
+/* ===================== 画像で保存 ===================== */
+function roundRect(ctx, x, y, w, h, r){
+  r = Math.max(0, Math.min(r, w/2, h/2));
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+// 画面の CSS（border-box）と おなじ 見た目に なるよう、線の はばの 半分だけ 内がわに えがく
+function drawBox(ctx, b, radius, fill, stroke, lw, dash){
+  var i = lw/2;
+  roundRect(ctx, b.x+i, b.y+i, b.w-lw, b.h-lw, radius-i);
+  ctx.fillStyle = fill; ctx.fill();
+  ctx.setLineDash(dash || []);
+  ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke();
+  ctx.setLineDash([]);
+}
+// CSS の object-fit:cover と おなじように、はみ出た ぶんを きって うめる
+function drawImageCover(ctx, img, dx, dy, dw, dh){
+  var ir = img.width/img.height, dr = dw/dh, sx, sy, sw, sh;
+  if(ir > dr){ sh = img.height; sw = sh*dr; sx = (img.width-sw)/2; sy = 0; }
+  else { sw = img.width; sh = sw/dr; sx = 0; sy = (img.height-sh)/2; }
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+function drawPic(ctx, p, img, color){
+  drawBox(ctx, {x:p.x, y:p.y, w:p.w, h:p.h}, 10, "#fff", color, PIC_BW);
+  if(!img) return;
+  ctx.save();
+  roundRect(ctx, p.x+PIC_BW, p.y+PIC_BW, p.w-2*PIC_BW, p.h-2*PIC_BW, 6);
+  ctx.clip();
+  drawImageCover(ctx, img, p.x+PIC_BW, p.y+PIC_BW, p.w-2*PIC_BW, p.h-2*PIC_BW);
+  ctx.restore();
+}
+function drawTextList(ctx, texts){
+  ctx.textBaseline = "middle";
+  texts.forEach(function(t){
+    setFont(ctx, t.size, t.w);
+    ctx.fillStyle = t.c;
+    ctx.textAlign = t.a;
+    ctx.fillText(t.t, t.x, t.y+t.lh/2);
+  });
+}
+function drawHub(ctx, x, y, r, ring, num, size){
+  if(ring){ ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fillStyle = "#fff"; ctx.fill(); }
+  ctx.beginPath(); ctx.arc(x, y, r-ring, 0, Math.PI*2); ctx.fillStyle = "#7c3aed"; ctx.fill();
+  ctx.fillStyle = "#fff"; setFont(ctx, size, 900);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(String(num), x, y+1);
+}
+// 図（ステージ）を canvas に えがく。ctx は ステージの 左上が (0,0) に なるように ずらしておく
+function drawScene(ctx, sc, imgs, center){
+  var m = sc.M;
+  drawBox(ctx, m.city, 24, "#dbeafe", "#3b82f6", CITY_BW);
+  ctx.fillStyle = "#1e40af"; setFont(ctx, 30, 900);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  if("letterSpacing" in ctx) ctx.letterSpacing = "2.4px";
+  ctx.fillText(center, m.city.x+m.city.w/2, m.city.y+CITY_BW+10+20);
+  if("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+
+  sc.l2.forEach(function(n){
+    drawBox(ctx, n.box, 18, "#fde68a", "#d97706", L2_BW);
+    drawTextList(ctx, n.texts);
+    ctx.strokeStyle = "rgba(217,119,6,.55)"; ctx.lineWidth = 2; ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(n.divider.x, n.divider.y+1); ctx.lineTo(n.divider.x+n.divider.w, n.divider.y+1); ctx.stroke();
+    ctx.setLineDash([]);
+    n.kids.forEach(function(k){
+      drawBox(ctx, k.box, 12, "#bbf7d0", "#16a34a", L3_BW);
+      drawTextList(ctx, k.texts);
+    });
+  });
+  sc.photoPanes.forEach(function(pane){
+    pane.tiles.forEach(function(t){
+      if(t.kind !== "photo") return;
+      var img = imgs[t.item.id] && imgs[t.item.id][t.index];
+      drawPic(ctx, {x:t.box.x, y:t.box.y, w:t.box.w, h:t.box.h}, img, "#d97706");
+    });
+  });
+
+  ctx.save();
+  ctx.globalAlpha = 0.8; ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 5;
+  ctx.lineCap = "round"; ctx.setLineDash([12,8]);
+  sc.links.forEach(function(L){
+    L.segs.forEach(function(p){
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(L.hub.x, L.hub.y); ctx.stroke();
+    });
+  });
+  ctx.restore();
+  sc.links.forEach(function(L){ drawHub(ctx, L.hub.x, L.hub.y, 16, 3, L.num, 15); });
+  sc.badges.forEach(function(bg){ drawHub(ctx, bg.x, bg.y, 12, 2, bg.num, 12); });
+
+  var side = sc.side;
+  drawBox(ctx, side.lp, 18, "#f5f3ff", "#c4b5fd", 3);
+  drawBox(ctx, side.ap, 18, "#fff7ed", "#fdba74", 3, [10,6]);
+  drawBox(ctx, side.np, 18, "#f0fdfa", "#5eead4", 3, [10,6]);
+  drawTextList(ctx, side.texts);
+  side.linkCards.forEach(function(c){
+    drawBox(ctx, c.box, 12, "#fff", "#7c3aed", 3);
+    drawHub(ctx, c.badge.x, c.badge.y, 13, 0, c.num, 13);
+    drawTextList(ctx, c.texts);
+  });
+  side.actCards.forEach(function(c){
+    drawBox(ctx, c.box, 12, "#fff7ed", "#ea580c", 3);
+    if(c.pic) drawPic(ctx, c.pic, imgs[c.ac.id], "#ea580c");
+    drawTextList(ctx, c.texts);
+  });
+}
+document.getElementById("btnPng").addEventListener("click", function(){
+  var jobs = [], imgs = {};
+  function reg(id, src){
+    if(!src) return;
+    jobs.push(loadImgEl(src).then(function(img){ imgs[id] = img; }));
+  }
+  items.forEach(function(it){
+    imgs[it.id] = [];
+    (it.photos||[]).forEach(function(src, idx){
+      jobs.push(loadImgEl(src).then(function(img){ imgs[it.id][idx] = img; }));
+    });
+  });
+  acts.forEach(function(ac){ reg(ac.id, ac.photo); });
+  Promise.all(jobs).then(function(){ drawAndSavePng(imgs); });
+});
+function drawAndSavePng(imgs){
+  var PAD = 16, SCALE = 2;
+  var W = STAGE_W+PAD*2, H = SLOGAN_H+STAGE_H+PAD;
+  var cv = document.createElement("canvas");
+  cv.width = W*SCALE; cv.height = H*SCALE;
+  var ctx = cv.getContext("2d");
+  ctx.scale(SCALE, SCALE);
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+
+  if(fullStudentLabel()){
+    ctx.fillStyle = "#475569"; setFont(ctx, 14, 700);
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(fullStudentLabel(), PAD, 18);
+  }
+
+  // スローガン
+  var sy = SLOGAN_H/2;
+  setFont(ctx, 27, 900); ctx.textBaseline = "middle";
+  var head = config.sloganPre+" ", tail = " "+config.sloganPost, mid = config.slogan || "　　　";
+  var wh = ctx.measureText(head).width, wt = ctx.measureText(tail).width;
+  var wm = ctx.measureText(mid).width + 20;
+  var startX = W/2 - (wh+wm+wt)/2;
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#0f172a"; ctx.fillText(head, startX, sy);
+  ctx.fillStyle = "#be123c"; ctx.fillText(mid, startX+wh+10, sy);
+  ctx.strokeStyle = "#fb7185"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(startX+wh, sy+18); ctx.lineTo(startX+wh+wm, sy+18); ctx.stroke();
+  ctx.fillStyle = "#0f172a"; ctx.fillText(tail, startX+wh+wm, sy);
+
+  ctx.save();
+  ctx.translate(PAD, SLOGAN_H);
+  drawScene(ctx, buildScene(M, {items:items, links:links, acts:acts, note:note}), imgs, config.center);
+  ctx.restore();
+
+  cv.toBlob(function(b){
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(b);
+    a.download = safeFileName("png");
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
+  });
+}
+
+document.getElementById("btnPrint").addEventListener("click", function(){ window.print(); });
+
+/* ===================== きろくの ほぞん・よみこみ ===================== */
+function currentRecord(){
+  var cfg = Object.assign({}, config);
+  delete cfg.geminiApiKey; delete cfg.helpLimit;   // まえの バージョンの のこりは ふくめない
+  return {
+    app: "fukuoka-marumaru", version: 3, deviceId: getDeviceId(),
+    studentName: studentName, studentRealName: studentRealName, config: cfg, items: items, links: links, acts: acts, note: note, uid: uid
+  };
+}
+// v2（円の ざひょう）の きろくを、v3 の マス目の ばしょに なおす
+function convertOldRecord(data){
+  function byRowCol(band){
+    return function(a, b){
+      var ra = Math.round((a.y||0)/band), rb = Math.round((b.y||0)/band);
+      return ra - rb || (a.x||0) - (b.x||0);
+    };
+  }
+  var its = data.items || [];
+  its.slice().sort(byRowCol(120)).forEach(function(it, i){ it.slot = i; });
+  its.forEach(function(it){
+    (it.children||[]).slice().sort(byRowCol(40)).forEach(function(c, j){ c.slot = j; delete c.x; delete c.y; });
+    delete it.x; delete it.y;
+  });
+  (data.acts||[]).sort(function(a, b){ return (a.y||0)-(b.y||0) || (a.x||0)-(b.x||0); });
+  (data.acts||[]).forEach(function(a){ delete a.x; delete a.y; });
+}
+// むかしの きろく（ばしょに 1まいだけ しゃしんが ついていた ころ）を、いまの「なんまいも」の 形に なおす
+function migratePhotos(items){
+  (items||[]).forEach(function(it){
+    if(!it.photos){ it.photos = it.photo ? [it.photo] : []; }
+    delete it.photo;
+    (it.children||[]).forEach(function(ch){ delete ch.photo; });
+  });
+}
+function applyRecord(data){
+  if(!(data.version >= 3)) convertOldRecord(data);
+  studentName = data.studentName || "";
+  studentRealName = data.studentRealName || "";
+  // 端末ごとの せんせい設定（APIキー・回数上限・ランドマーク一覧）は、きろくで うわがき しない
+  // 端末の ランドマーク一覧は、きろくで うわがき しない。まえの バージョンの APIキーは とりこまない
+  config = Object.assign({}, config, data.config || {}, {landmarks:config.landmarks});
+  delete config.geminiApiKey; delete config.helpLimit;
+  items = data.items || [];
+  migratePhotos(items);
+  links = data.links || [];
+  acts = data.acts || [];
+  note = data.note || "";
+  // わくの 上限が きろくより 小さいと、はみ出た ばしょ・ことばが 図に でなく なるので ひろげる
+  config.maxL2 = Math.max(parseInt(config.maxL2,10)||4, items.length);
+  config.maxL3 = Math.max(parseInt(config.maxL3,10)||2,
+    items.reduce(function(a, it){ return Math.max(a, (it.children||[]).length); }, 0));
+  // id が かぶらないように、つかわれている いちばん 大きい id より 先から ふる
+  var maxId = 0;
+  items.forEach(function(it){
+    maxId = Math.max(maxId, it.id||0);
+    (it.children||[]).forEach(function(c){ maxId = Math.max(maxId, c.id||0); });
+  });
+  links.concat(acts).forEach(function(o){ maxId = Math.max(maxId, o.id||0); });
+  uid = Math.max(data.uid||0, maxId);
+  exitLinkMode();
+  resetUndo();
+  activeTab = firstOpenStep();
+  renderSlogan(); renderNameTag(); render(); fit(); updateHelpTitle();
+  shrinkOldPhotos();
+}
+
+function showToast(msg){
+  var existing = document.querySelector(".toast");
+  if(existing) existing.remove();
+  var t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 2600);
+}
+
+// この Chromebook の ブラウザだけに、きろくを おぼえさせる（サーバーは つかわない）
+// v3 は べつの キーに ほぞんする（v2 の きろくを うわがきしない）。v3 の きろくが なければ v2 の きろくを よむ
+function localRecordKey(){ return "marumaru_local_v3_" + getDeviceId(); }
+function legacyRecordKey(){ return "marumaru_local_" + getDeviceId(); }
+
+// 「とっておく」は じぶんで えらんだ ときの きろく。ふだんの さぎょうは じどう ほぞん（下）で まもる
+document.getElementById("btnSaveFile").addEventListener("click", function(){
+  try {
+    localStorage.setItem(localRecordKey(), JSON.stringify(Object.assign({savedAt:new Date().toISOString()}, currentRecord())));
+    showToast("💾 いまの きろくを とっておきました！");
+  } catch(e){
+    showToast("ほぞんに しっぱいしました。もういちど ためしてください。");
+  }
+});
+
+document.getElementById("btnLoadFile").addEventListener("click", function(){
+  try {
+    var raw = localStorage.getItem(localRecordKey()) || localStorage.getItem(legacyRecordKey());
+    if(!raw){ showToast("まだ とっておいた きろくが ありません。"); return; }
+    if(hasWork()) backupRecord(currentRecord());
+    applyRecord(JSON.parse(raw));
+    showToast("📂 とっておいた きろくを ひらきました！");
+  } catch(e){
+    showToast("よみこみに しっぱいしました。もういちど ためしてください。");
+  }
+});
+
+/* ===================== じどう ほぞん と、まちがえて とじた・もどった ときの たいさく ===================== */
+function autoKey(){ return "marumaru_auto_v3_" + getDeviceId(); }
+function backupKey(){ return "marumaru_backup_v3_" + getDeviceId(); }
+function backupRecord(rec){
+  try { localStorage.setItem(backupKey(), JSON.stringify(Object.assign({savedAt:new Date().toISOString()}, rec))); } catch(e){}
+}
+function hasWork(){ return items.length > 0 || acts.length > 0 || links.length > 0 || note.trim().length > 0 || sloganDone(); }
+function recordHasWork(d){
+  return !!d && ((d.items||[]).length > 0 || (d.acts||[]).length > 0 || !!(d.config && d.config.slogan));
+}
+
+// かわる たびに この 端末へ じどうで ほぞんする（きどう して「つづき」を えらぶ までは ほぞんしない）
+var autosaveReady = false, autosaveTimer = null, autosaveFailed = false;
+function scheduleAutosave(){
+  if(!autosaveReady) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(flushAutosave, 400);
+}
+function flushAutosave(){
+  if(!autosaveReady) return;
+  clearTimeout(autosaveTimer); autosaveTimer = null;
+  try {
+    localStorage.setItem(autoKey(), JSON.stringify(Object.assign({savedAt:new Date().toISOString()}, currentRecord())));
+    autosaveFailed = false;
+  } catch(e){
+    if(!autosaveFailed) showToast("じどう ほぞんが できませんでした。しゃしんを へらすか、せんせいに しらせてね。");
+    autosaveFailed = true;
+  }
+}
+window.addEventListener("pagehide", flushAutosave);
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "hidden") flushAutosave();
+});
+
+// タブを とじる・再読み込み・ほかの ページへ いこうと したら、ブラウザの かくにんを だす
+window.addEventListener("beforeunload", function(e){
+  flushAutosave();
+  if(!hasWork()) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
+
+// ブラウザの「もどる」「すすむ」を おしても、この ページから でないように する
+// （Chrome は ページを さわった あとに つくった れきしだけを 有効に するので、さいしょの タップで つくる）
+var historyGuarded = false;
+function guardHistory(){
+  if(historyGuarded) return;
+  historyGuarded = true;
+  try { history.pushState({marumaru:1}, "", location.href); } catch(e){}
+}
+document.addEventListener("pointerdown", guardHistory, true);
+document.addEventListener("keydown", guardHistory, true);
+window.addEventListener("popstate", function(){
+  flushAutosave();
+  try { history.pushState({marumaru:1}, "", location.href); } catch(e){}
+  showToast("⬅ もどる・すすむ ボタンは つかわないでね。かいた ことは そのまま のこっているよ。");
+});
+
+// きどう したとき、まえの つづきが あれば えらんでもらう
+function startSession(){
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem(autoKey()) || "null"); } catch(e){}
+  if(!recordHasWork(saved)){
+    autosaveReady = true;
+    askName(function(){ askSlogan(true); });
+    return;
+  }
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<h2>▶ まえの つづきが あります</h2>'+
+      '<div class="sub" id="rsInfo" style="white-space:pre-line; font-size:15px; font-weight:800; color:#334155;"></div>'+
+      '<div class="btnrow" style="flex-direction:column; align-items:stretch;">'+
+        '<button class="primary" id="rsGo" style="font-size:18px; padding:14px;">つづきから はじめる</button>'+
+        '<button id="rsNew">あたらしく はじめる</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  var cfg = saved.config || {};
+  var when = saved.savedAt ? new Date(saved.savedAt).toLocaleString("ja-JP", {month:"numeric", day:"numeric", hour:"numeric", minute:"2-digit"}) : "";
+  ov.querySelector("#rsInfo").textContent =
+    ([saved.studentName, saved.studentRealName].filter(Boolean).join("　") || "くみ・ばんごう なし") + (when ? "（"+when+"）" : "") + "\n" +
+    "「" + (cfg.sloganPre||"") + " " + (cfg.slogan||"　　") + " " + (cfg.sloganPost||"") + "」";
+  ov.querySelector("#rsGo").addEventListener("click", function(){
+    ov.remove();
+    applyRecord(saved);
+    autosaveReady = true;
+    if(!studentName || !studentRealName) askName(null);
+  });
+  ov.querySelector("#rsNew").addEventListener("click", function(){
+    backupRecord(saved);   // まちがえて えらんでも、せんせいが 設定から もどせる
+    ov.remove();
+    autosaveReady = true;
+    askName(function(){ askSlogan(true); });
+  });
+}
+
+/* ===================== メニュー ===================== */
+var menuPanel = document.getElementById("menuPanel");
+document.getElementById("btnMenu").addEventListener("click", function(){
+  menuPanel.hidden = !menuPanel.hidden;
+});
+menuPanel.addEventListener("click", function(ev){
+  if(ev.target.closest("button")) menuPanel.hidden = true;
+});
+document.addEventListener("pointerdown", function(ev){
+  if(!menuPanel.hidden && !ev.target.closest(".menu-wrap")) menuPanel.hidden = true;
+}, true);
+
+/* ---- ファイル名（くみ・ばんごうを ふくめて、ほかの 子と かぶらないように する） ---- */
+function safeFileName(ext){
+  var label = [studentName, studentRealName].filter(Boolean).join("_");
+  var safe = (label || "きろく").replace(/[\\/:*?"<>|\s]/g, "").trim() || "きろく";
+  return "marumaru_" + safe + "." + ext;
+}
+function recordBlob(){
+  var data = Object.assign({savedAt: new Date().toISOString()}, currentRecord());
+  return new Blob([JSON.stringify(data)], {type:"application/json"});
+}
+function downloadBlob(blob, filename){
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
+}
+
+/* ---- ファイルでの バックアップ（先生用・設定 画面からのみ 使用） ---- */
+function exportRecordToFile(){
+  downloadBlob(recordBlob(), safeFileName("json"));
+}
+
+/* ---- せんせいに ていしゅつする（メニューから、子どもが つかう） ---- */
+function showSubmitGuide(filename){
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<h2>📤 ほぞん できました</h2>'+
+      '<div class="sub" style="font-size:15px; line-height:1.9;">'+
+        '「<span id="sgFile" style="font-weight:900; color:#1e293b;"></span>」という ファイルが できたよ。<br>'+
+        'つぎに、せんせいから おしえられた ばしょ（Google Classroom など）に、この ファイルを ていしゅつしてね。'+
+      '</div>'+
+      '<div class="btnrow"><button class="primary" id="sgOk2">わかった</button></div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  ov.querySelector("#sgFile").textContent = filename;
+  ov.querySelector("#sgOk2").addEventListener("click", function(){ ov.remove(); });
+}
+// ていしゅつの まえに、かけているか どうかを いっしょに たしかめる
+function submitChecks(){
+  return [
+    {ok: !!(studentName && studentRealName), text:"くみ・ばんごう・なまえ"},
+    {ok: sloganDone(),          text:"🚩 スローガン"},
+    {ok: items.length > 0,      text:"📍 ばしょ"},
+    {ok: allChildren().length > 0, text:"💬 ことば"},
+    {ok: links.length > 0,      text:"🔗 くみあわせ"},
+    {ok: acts.length > 0,       text:"🌱 とりくみ"},
+    {ok: note.trim().length > 0, text:"💭 きづき・つぶやき"}
+  ];
+}
+function doSubmit(){
+  try {
+    var filename = safeFileName("json");
+    downloadBlob(recordBlob(), filename);
+    showSubmitGuide(filename);
+  } catch(e){
+    showToast("ていしゅつの じゅんびに しっぱいしました。もういちど ためしてください。");
+  }
+}
+function startSubmit(){
+  if(!hasWork()){ showToast("さきに スローガンや ばしょを かいてから ていしゅつしてね。"); return; }
+  if(!studentName || !studentRealName){ askName(startSubmit, true); return; }
+  var checks = submitChecks(), missing = checks.filter(function(c){ return !c.ok; });
+  var ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML =
+    '<div class="modal">'+
+      '<div class="modal-head"><h2>📤 ていしゅつする まえに たしかめよう</h2><button class="speak" id="scSpeak">🔊</button></div>'+
+      '<div class="sub" id="scSub"></div>'+
+      '<ul class="check-list" id="scList"></ul>'+
+      '<div class="btnrow">'+
+        (missing.length ? '<button class="primary" id="scBack">もどって かく</button><button id="scGo">このまま ていしゅつする</button>'
+                        : '<button id="scBack">やめる</button><button class="primary" id="scGo">ていしゅつする</button>')+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  var sub = missing.length
+    ? "まだ かいていない ところが " + missing.length + " こ あるよ。"
+    : "ぜんぶ かけたね！ " + fullStudentLabel() + " で ていしゅつします。";
+  ov.querySelector("#scSub").textContent = sub;
+  var ul = ov.querySelector("#scList");
+  checks.forEach(function(c){
+    var li = document.createElement("li");
+    li.className = c.ok ? "ok" : "ng";
+    li.textContent = (c.ok ? "✅ " : "⬜ ") + c.text + (c.ok ? "" : "　…まだ だよ");
+    ul.appendChild(li);
+  });
+  ov.querySelector("#scSpeak").addEventListener("click", function(){
+    speak(sub + (missing.length ? "まだなのは、" + missing.map(function(c){ return c.text; }).join("、") + "。" : ""));
+  });
+  ov.querySelector("#scBack").addEventListener("click", function(){ ov.remove(); });
+  ov.querySelector("#scGo").addEventListener("click", function(){ ov.remove(); doSubmit(); });
+}
+document.getElementById("btnSubmit").addEventListener("click", startSubmit);
+function importRecordFromFile(file, onDone){
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try {
+      var data = JSON.parse(ev.target.result);
+      if(!data || data.app !== "fukuoka-marumaru") throw new Error("bad file");
+      applyRecord(data);
+      if(onDone) onDone();
+    } catch(err){
+      alert("この ファイルは よみこめませんでした。");
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ===================== 起動 ===================== */
+renderSlogan();
+renderNameTag();
+render();
+fit();
+updateHelpTitle();
+startSession();
+</script>
+</body>
+</html>
