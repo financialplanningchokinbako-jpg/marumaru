@@ -163,10 +163,10 @@
 
   /* しゃしんは わくの そとに おく */
   .pic{
-    position:absolute; background:#fff; border:4px solid; border-radius:10px; overflow:hidden;
+    position:absolute; background:#f1f5f9; border:4px solid; border-radius:10px; overflow:hidden;
     cursor:grab; box-shadow:0 3px 8px rgba(0,0,0,.18);
   }
-  .pic img{width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; -webkit-user-drag:none;}
+  .pic img{width:100%; height:100%; object-fit:contain; display:block; pointer-events:none; -webkit-user-drag:none;}
 
   .tx{position:absolute; white-space:pre; pointer-events:none; font-family:var(--font);}
 
@@ -213,6 +213,15 @@
     font-weight:800; font-size:14px; padding:8px; opacity:.9;
     transform:translate(-50%,-50%);
   }
+
+  /* ---- しゃしんを 大きく 見る ---- */
+  .viewer{
+    position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:1000;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:16px;
+  }
+  .viewer img{width:100%; height:calc(100% - 70px); object-fit:contain; cursor:zoom-out; -webkit-user-drag:none;}
+  .viewer .vbtns{display:flex; gap:10px; flex:none;}
+  .viewer .vbtns button{font-size:16px; padding:10px 18px;}
 
   /* ---- ダイアログ ---- */
   .overlay{
@@ -453,6 +462,15 @@ function fitLines(text, size, weight, maxW, maxLines){
   }
   return lines;
 }
+// ながい 文は、maxLines 行に おさまるまで 字を ちいさく する（minSize より ちいさくは しない）
+// lhRatio = 行の たかさ ÷ 字の 大きさ。maxLines に 関数を わたすと、字の 大きさごとに 行数を きめる
+function shrinkToFit(text, size, minSize, weight, maxW, maxLines, lhRatio){
+  for(var s=size; s>=minSize; s--){
+    var lh = Math.round(s*lhRatio), n = typeof maxLines === "function" ? maxLines(lh) : maxLines;
+    if(s === minSize || lineCount(text, s, weight, maxW) <= n)
+      return {size:s, lh:lh, lines:fitLines(text, s, weight, maxW, n)};
+  }
+}
 // ぜんぶ かくと なん行に なるか（fitLines と おなじ はばで かぞえる）
 function lineCount(text, size, weight, maxW){
   if(!text) return 0;
@@ -577,13 +595,14 @@ function buildScene(m, st){
     var b = cell;
     var node = {item:it, cell:cell, box:b, texts:[], kids:[], ph3:[]};
     var tx = b.x+L2_BW+L2_PAD, tw = b.w-2*(L2_BW+L2_PAD);
-    var nlh = Math.round(m.n2*1.25), rlh = Math.round(m.r2*1.4);
     var ty = b.y+L2_BW+L2_PAD-2;
-    ty = textBlock(node.texts, fitLines(it.name, m.n2, 900, tw, 2), tx, ty, m.n2, nlh, 900, "#1f2937");
+    var nf = shrinkToFit(it.name, m.n2, Math.round(m.n2*0.7), 900, tw, 2, 1.25);
+    ty = textBlock(node.texts, nf.lines, tx, ty, nf.size, nf.lh, 900, "#1f2937");
     ty += 4;
     var avail = b.y+m.head2-8-ty;
-    textBlock(node.texts, fitLines(it.reason, m.r2, 700, tw, Math.max(1, Math.floor(avail/rlh))),
-              tx, ty, m.r2, rlh, 700, "#374151");
+    var rf = shrinkToFit(it.reason, m.r2, Math.max(11, Math.round(m.r2*0.65)), 700, tw,
+                         function(lh){ return Math.max(1, Math.floor(avail/lh)); }, 1.4);
+    textBlock(node.texts, rf.lines, tx, ty, rf.size, rf.lh, 700, "#374151");
     node.divider = {x:tx, y:b.y+m.head2-6, w:tw};
 
     node.cells3 = gridCells(m.maxL3, m.cols3, tx, b.y+m.head2, tw, b.h-m.head2-L2_BW-L2_PAD, GAP3);
@@ -595,13 +614,14 @@ function buildScene(m, st){
       var b3 = c3;
       var k = {ch:ch, cell:c3, box:b3, texts:[]};
       var x3 = b3.x+L3_BW+L3_PAD, w3 = b3.w-2*(L3_BW+L3_PAD);
-      var nlh3 = Math.round(m.n3*1.25), rlh3 = Math.round(m.r3*1.38);
       var y3 = b3.y+L3_BW+L3_PAD-2;
-      y3 = textBlock(k.texts, fitLines(ch.name, m.n3, 900, w3, 2), x3, y3, m.n3, nlh3, 900, "#1f2937");
+      var nf3 = shrinkToFit(ch.name, m.n3, Math.round(m.n3*0.7), 900, w3, 2, 1.25);
+      y3 = textBlock(k.texts, nf3.lines, x3, y3, nf3.size, nf3.lh, 900, "#1f2937");
       y3 += 3;
       var avail3 = b3.y+b3.h-L3_BW-L3_PAD+2-y3;
-      textBlock(k.texts, fitLines(ch.reason, m.r3, 700, w3, Math.floor(avail3/rlh3)),
-                x3, y3, m.r3, rlh3, 700, "#374151");
+      var rf3 = shrinkToFit(ch.reason, m.r3, Math.max(10, Math.round(m.r3*0.65)), 700, w3,
+                            function(lh){ return Math.floor(avail3/lh); }, 1.38);
+      textBlock(k.texts, rf3.lines, x3, y3, rf3.size, rf3.lh, 700, "#374151");
       node.kids.push(k);
     });
     sc.l2.push(node);
@@ -1089,7 +1109,9 @@ function render(){
         var img = document.createElement("img");
         img.src = t.src; img.alt = ""; img.draggable = false;
         pic.appendChild(img);
-        pic.addEventListener("click", function(){ openPlacePhotoPicker(t.item, t.index); });
+        pic.addEventListener("click", function(){
+          openPhotoViewer(t.src, function(){ openPlacePhotoPicker(t.item, t.index); });
+        });
       }
     });
   });
@@ -1261,23 +1283,22 @@ function openNodeActions(obj, kind){
 }
 
 /* ===================== しゃしんを つける ===================== */
-// しゃしんを せいほうけいに きりぬいて、ちいさくした dataURL に する（きょうつう）
-// 端末の ほぞん ばしょ（やく 5MB）に おさまるように、1まい 20〜30KB ほどに する
+// しゃしんを きりぬかずに（たて・よこの わりあいは そのまま）、ちいさくした dataURL に する（きょうつう）
+// 端末の ほぞん ばしょ（やく 5MB）に おさまるように、ながい ほうの へんを px に して 1まい 20〜30KB ほどに する
 var PHOTO_PX_PLACE = 360, PHOTO_PX_ACT = 240, PHOTO_QUALITY = 0.75;
-function cropToSquareDataUrl(file, onDone, px){
+function resizePhotoDataUrl(file, onDone, px){
   if(!file) return;
   var reader = new FileReader();
   reader.onload = function(e){
     var img = new Image();
     img.onload = function(){
-      var side = Math.min(img.width, img.height);
-      var sx = (img.width-side)/2, sy = (img.height-side)/2;
-      var out = Math.min(px || PHOTO_PX_PLACE, side);
+      var k = Math.min(1, (px || PHOTO_PX_PLACE)/Math.max(img.width, img.height));
       var cv = document.createElement("canvas");
-      cv.width = cv.height = out;
+      cv.width = Math.max(1, Math.round(img.width*k));
+      cv.height = Math.max(1, Math.round(img.height*k));
       var ctx = cv.getContext("2d");
       ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(img, sx, sy, side, side, 0, 0, out, out);
+      ctx.drawImage(img, 0, 0, cv.width, cv.height);
       onDone(cv.toDataURL("image/jpeg", PHOTO_QUALITY));
     };
     img.onerror = function(){ alert("この しゃしんは よみこめませんでした。"); };
@@ -1285,6 +1306,29 @@ function cropToSquareDataUrl(file, onDone, px){
   };
   reader.readAsDataURL(file);
 }
+// しゃしんを がめん いっぱいに 見せる。しゃしんを もう いちど タップすると もどる
+// onEdit が あれば「かえる・けす」ボタンから いつもの しゃしんの メニューを ひらく
+function openPhotoViewer(src, onEdit){
+  if(!src) return;
+  var ov = document.createElement("div");
+  ov.className = "viewer";
+  ov.innerHTML = '<img alt="">'+
+    '<div class="vbtns">'+
+      (onEdit ? '<button id="vEdit">✏️ しゃしんを かえる・けす</button>' : '')+
+      '<button id="vClose">もどる</button>'+
+    '</div>';
+  ov.querySelector("img").src = src;
+  document.body.appendChild(ov);
+  function close(){ ov.remove(); document.removeEventListener("keydown", onKey); }
+  function onKey(e){ if(e.key === "Escape") close(); }
+  document.addEventListener("keydown", onKey);
+  ov.querySelector("img").addEventListener("click", close);
+  ov.querySelector("#vClose").addEventListener("click", close);
+  ov.addEventListener("click", function(e){ if(e.target === ov) close(); });   // まわりの くろい ところでも もどる
+  var ed = ov.querySelector("#vEdit");
+  if(ed) ed.addEventListener("click", function(){ close(); onEdit(); });
+}
+
 // とりくみの しゃしん（1まいだけ）。ばしょの しゃしんは openPlacePhotoPicker を つかう
 function openPhotoPicker(obj){
   var ov = document.createElement("div");
@@ -1308,7 +1352,7 @@ function openPhotoPicker(obj){
   if(preview) preview.src = obj.photo;
 
   function handleFile(file){
-    cropToSquareDataUrl(file, function(url){ obj.photo = url; ov.remove(); render(); }, PHOTO_PX_ACT);
+    resizePhotoDataUrl(file, function(url){ obj.photo = url; ov.remove(); render(); }, PHOTO_PX_ACT);
   }
   ov.querySelector("#pBrowse").addEventListener("click", function(){ ov.querySelector("#fBrowse").click(); });
   ov.querySelector("#pCamera").addEventListener("click", function(){ ov.querySelector("#fCamera").click(); });
@@ -1345,7 +1389,7 @@ function openPlacePhotoPicker(item, index){
   if(preview) preview.src = current;
 
   function handleFile(file){
-    cropToSquareDataUrl(file, function(url){
+    resizePhotoDataUrl(file, function(url){
       if(isNew){
         if(item.photos.length >= MAX_PHOTOS_PER_PLACE){ ov.remove(); showToast("しゃしんは "+MAX_PHOTOS_PER_PLACE+" まいまでです。"); return; }
         item.photos.push(url);
@@ -1366,12 +1410,13 @@ function openPlacePhotoPicker(item, index){
 // まえの バージョンで ほぞんした 大きい しゃしん（480px）を、ひらいた ときに ちいさく しなおす
 function shrinkDataUrl(src, px){
   return loadImgEl(src).then(function(img){
-    if(!img || img.width <= px) return src;
+    if(!img || Math.max(img.width, img.height) <= px) return src;
+    var k = px/Math.max(img.width, img.height);
     var cv = document.createElement("canvas");
-    cv.width = cv.height = px;
+    cv.width = Math.round(img.width*k); cv.height = Math.round(img.height*k);
     var ctx = cv.getContext("2d");
     ctx.imageSmoothingQuality = "high";
-    drawImageCover(ctx, img, 0, 0, px, px);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
     return cv.toDataURL("image/jpeg", PHOTO_QUALITY);
   });
 }
@@ -1625,7 +1670,7 @@ function askLinkText(lk){
     title: n+"つを かけあわせて 考えたことは？",
     sub: names.map(function(s){ return "「"+s+"」"; }).join(" ✕ "),
     needName: false,
-    reasonMax: 120,
+    reasonMax: 200,
     reasonLabel: "かんがえたことを かこう",
     initial: lk.text || "",
     ph: "",
@@ -1658,7 +1703,7 @@ function askAct(ac){
     title: "スローガンを じつげんする ために できる とりくみは？",
     sub: "「"+config.sloganPre+" "+(config.slogan||"　　")+" "+config.sloganPost+"」に するために、じぶんが できること・まちで やりたいこと。",
     needName: false,
-    reasonMax: 140,
+    reasonMax: 200,
     reasonLabel: "とりくみを かこう",
     initial: ac.text || "",
     ph: "",
@@ -1685,7 +1730,7 @@ function askNote(){
     title: "この 図を つくって、気づいたこと・思ったことは？",
     sub: "がんばった ことや、もっと しりたく なった ことなど、自由に かいてみよう。",
     needName: false,
-    reasonMax: 200,
+    reasonMax: 300,
     reasonLabel: "きづき・つぶやきを かこう",
     initial: note || "",
     ph: "",
@@ -1844,7 +1889,8 @@ function onUp(ev){
     var ac = findAct(d.payload.id);
     if(!ac) return;
     if(!d.moved){   // タップだけ → メニュー（しゃしんを タップした ときは、しゃしんの メニューを だす）
-      if(d.payload.isPhoto) openPhotoPicker(ac); else openNodeActions(ac, "4");
+      if(d.payload.isPhoto) openPhotoViewer(ac.photo, function(){ openPhotoPicker(ac); });
+      else openNodeActions(ac, "4");
       return;
     }
     if(inSide(p)){
@@ -1917,7 +1963,7 @@ function askL2(name, slot){
   openDialog({
     title: "どうして この ばしょを えらんだの？",
     sub: name ? ("えらんだ ばしょ：" + name) : "ばしょの 名前と、えらんだ りゆうを かこう",
-    needName: !name, nameLabel: "ばしょの 名前", nameMax: 16, reasonMax: 120,
+    needName: !name, nameLabel: "ばしょの 名前", nameMax: 24, reasonMax: 200,
     reasonLabel: "えらんだ りゆうを かこう（ゆうめい？よく いく？ など）",
     ph: "れい：ゆうめいで、みんな しっているから",
     onOk: function(v){
@@ -1931,7 +1977,7 @@ function editL2(it){
   openDialog({
     title: "ばしょを かきなおそう",
     sub: "「"+it.name+"」の 名前と りゆうを なおせます",
-    needName: true, nameLabel: "ばしょの 名前", nameMax: 16, reasonMax: 120,
+    needName: true, nameLabel: "ばしょの 名前", nameMax: 24, reasonMax: 200,
     reasonLabel: "えらんだ りゆうを かこう（ゆうめい？よく いく？ など）",
     initialName: it.name, initial: it.reason,
     ph: "れい：ゆうめいで、みんな しっているから",
@@ -1943,7 +1989,7 @@ function askL3(parent, slot){
   openDialog({
     title: "「"+parent.name+"」と きいて うかぶ ことばは？",
     sub: "りゆうでは なく、じぶんだけの おもいでや きもちを ことばに してみよう",
-    needName: true, nameLabel: "うかんだ ことば", nameMax: 14, reasonMax: 120,
+    needName: true, nameLabel: "うかんだ ことば", nameMax: 20, reasonMax: 200,
     reasonLabel: "その ことばを えらんだ わけを かこう（みじかくて いいよ）",
     ph: "れい：かぞくと はなびを みた ばしょ",
     onOk: function(v){
@@ -1957,7 +2003,7 @@ function editL3(ch){
   openDialog({
     title: "ことばを かきなおそう",
     sub: "りゆうでは なく、じぶんだけの おもいでや きもちを かいてね",
-    needName: true, nameLabel: "うかんだ ことば", nameMax: 14, reasonMax: 120,
+    needName: true, nameLabel: "うかんだ ことば", nameMax: 20, reasonMax: 200,
     reasonLabel: "その ことばを えらんだ わけを かこう（みじかくて いいよ）",
     initialName: ch.name, initial: ch.reason,
     ph: "れい：かぞくと はなびを みた ばしょ",
@@ -2244,20 +2290,18 @@ function drawBox(ctx, b, radius, fill, stroke, lw, dash){
   ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke();
   ctx.setLineDash([]);
 }
-// CSS の object-fit:cover と おなじように、はみ出た ぶんを きって うめる
-function drawImageCover(ctx, img, dx, dy, dw, dh){
-  var ir = img.width/img.height, dr = dw/dh, sx, sy, sw, sh;
-  if(ir > dr){ sh = img.height; sw = sh*dr; sx = (img.width-sw)/2; sy = 0; }
-  else { sw = img.width; sh = sw/dr; sx = 0; sy = (img.height-sh)/2; }
-  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+// CSS の object-fit:contain と おなじように、きらずに ぜんたいを わくの なかに おさめる
+function drawImageContain(ctx, img, dx, dy, dw, dh){
+  var k = Math.min(dw/img.width, dh/img.height), w = img.width*k, h = img.height*k;
+  ctx.drawImage(img, dx+(dw-w)/2, dy+(dh-h)/2, w, h);
 }
 function drawPic(ctx, p, img, color){
-  drawBox(ctx, {x:p.x, y:p.y, w:p.w, h:p.h}, 10, "#fff", color, PIC_BW);
+  drawBox(ctx, {x:p.x, y:p.y, w:p.w, h:p.h}, 10, "#f1f5f9", color, PIC_BW);
   if(!img) return;
   ctx.save();
   roundRect(ctx, p.x+PIC_BW, p.y+PIC_BW, p.w-2*PIC_BW, p.h-2*PIC_BW, 6);
   ctx.clip();
-  drawImageCover(ctx, img, p.x+PIC_BW, p.y+PIC_BW, p.w-2*PIC_BW, p.h-2*PIC_BW);
+  drawImageContain(ctx, img, p.x+PIC_BW, p.y+PIC_BW, p.w-2*PIC_BW, p.h-2*PIC_BW);
   ctx.restore();
 }
 function drawTextList(ctx, texts){
